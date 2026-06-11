@@ -7,7 +7,7 @@ node_modules/
 # Build
 dist/
 build/
-*.dart.tool/
+.dart_tool/
 
 # Environment
 .env

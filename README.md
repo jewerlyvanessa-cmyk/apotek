@@ -49,15 +49,9 @@ flutter pub get
 flutter run -d chrome   # atau emulator / device
 ```
 
-**Akun demo (setelah seed):**
+**Akun pengembangan (setelah seed):**
 
-| Email | Password | Role |
-|-------|----------|------|
-| superadmin@apotikflow.com | password123 | SUPER_ADMIN (kelola tenant/cabang) |
-| owner@apotikflow.com | password123 | OWNER (stok seluruh tenant) |
-| kasir@apotikflow.com | password123 | CASHIER |
-| pelayan@apotikflow.com | password123 | STAFF |
-| gudang@apotikflow.com | password123 | WAREHOUSE |
+Jalankan `npm run db:seed` di folder `api/`. Akun dan peran dibuat otomatis oleh skrip seed — lihat output terminal setelah seed selesai, atau daftar email di `api/prisma/seed.ts`. Jangan menaruh password di dokumentasi; untuk lingkungan non-dev, buat user lewat modul Platform/Admin, bukan seed.
 
 ### Uji coba MVP
 
