@@ -49,4 +49,8 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 ```
 
-Panduan lengkap: `referensi/10. checklist beli putus.md`
+Panduan lengkap:
+
+- **Beli putus (on-prem):** `referensi/14. runbook on-prem pelanggan pertama.md` (ringkas) · `referensi/10. checklist beli putus.md` (detail)
+- **SaaS satu VPS:** `referensi/13. runbook saas satu vps.md`
+- **Demo online (sales):** `referensi/15. runbook demo online calon pelanggan.md`
