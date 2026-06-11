@@ -1,0 +1,474 @@
+Desain API Enterprise
+
+Aplikasi Apotik Multi-Tenant
+Flutter + Node.js + PostgreSQL
+
+Standar:
+
+REST API
+JWT Authentication
+Multi Tenant
+Realtime Ready
+Clean Architecture Ready
+Mobile + Desktop
+Production Ready
+Base URL
+Development
+https://dev-api.apotikflow.com/api/v1
+Production
+https://api.apotikflow.com/api/v1
+Standard Response
+Success Response
+{
+  "success": true,
+  "message": "Success",
+  "data": {},
+  "meta": {}
+}
+Error Response
+{
+  "success": false,
+  "message": "Stock not enough",
+  "errors": [],
+  "code": "STOCK_NOT_ENOUGH"
+}
+Authentication
+
+Gunakan:
+
+Access Token JWT
+Refresh Token
+Device Session
+RBAC
+Header Standard
+Authorization: Bearer access_token
+X-Tenant-ID: tenant_uuid
+X-Branch-ID: branch_uuid
+Content-Type: application/json
+API VERSIONING
+/api/v1
+MODULE API
+auth
+users
+tenants
+branches
+medicines
+stocks
+orders
+payments
+inventory
+suppliers
+reports
+stock-opname
+transfer-stock
+notifications
+websocket
+AUTH MODULE
+Login
+POST /auth/login
+
+Request:
+
+{
+  "email": "admin@apotik.com",
+  "password": "password123",
+  "device_name": "Samsung A54"
+}
+
+Response:
+
+{
+  "success": true,
+  "data": {
+    "access_token": "jwt",
+    "refresh_token": "jwt",
+    "expires_in": 3600,
+    "user": {
+      "id": "uuid",
+      "name": "John"
+    }
+  }
+}
+Refresh Token
+POST /auth/refresh
+Logout
+POST /auth/logout
+Current User
+GET /auth/me
+TENANT MODULE
+Get Tenant Detail
+GET /tenants/current
+BRANCH MODULE
+List Branches
+GET /branches
+
+Query:
+
+?page=1
+&limit=20
+&search=
+Create Branch
+POST /branches
+MEDICINE MODULE
+List Medicines
+GET /medicines
+
+Query:
+
+?page=1
+&limit=20
+&search=paracetamol
+&category_id=
+&barcode=
+Get Medicine Detail
+GET /medicines/:id
+Create Medicine
+POST /medicines
+
+Request:
+
+{
+  "name": "Paracetamol",
+  "barcode": "899123123",
+  "category_id": "uuid",
+  "buy_price": 5000,
+  "sell_price": 7000,
+  "unit": "STRIP"
+}
+Update Medicine
+PUT /medicines/:id
+Delete Medicine
+DELETE /medicines/:id
+STOCK MODULE
+Get Stock List
+GET /stocks
+
+Query:
+
+?branch_id=
+&medicine_id=
+&low_stock=true
+&expired=true
+Get Realtime Stock
+GET /stocks/realtime/:medicineId
+
+Response:
+
+{
+  "success": true,
+  "data": {
+    "medicine_id": "uuid",
+    "quantity": 100,
+    "reserved_quantity": 10,
+    "available_quantity": 90
+  }
+}
+Stock Mutation
+POST /stocks/mutation
+
+Request:
+
+{
+  "medicine_id": "uuid",
+  "movement_type": "ADJUSTMENT",
+  "quantity": 10,
+  "notes": "Correction"
+}
+ORDER MODULE
+Create Order
+
+Digunakan pelayan apotik.
+
+POST /orders
+
+Request:
+
+{
+  "customer_name": "Budi",
+  "items": [
+    {
+      "medicine_id": "uuid",
+      "quantity": 2
+    }
+  ]
+}
+Flow Create Order
+Validate stock
+↓
+Reserve stock
+↓
+Create order
+↓
+Emit websocket
+Create Order Response
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "order_number": "ORD-20260525-001",
+    "status": "WAITING_PAYMENT"
+  }
+}
+List Orders
+GET /orders
+
+Query:
+
+?page=1
+&limit=20
+&status=WAITING_PAYMENT
+Get Order Detail
+GET /orders/:id
+Cancel Order
+POST /orders/:id/cancel
+
+Flow:
+
+Release reserved stock
+↓
+Update status
+↓
+Broadcast realtime
+PAYMENT MODULE
+Pay Order
+POST /payments
+
+Request:
+
+{
+  "order_id": "uuid",
+  "payment_method": "CASH",
+  "amount": 50000
+}
+Payment Flow
+Validate order
+↓
+Lock stock
+↓
+Reduce stock
+↓
+Release reserved stock
+↓
+Save payment
+↓
+Update order
+↓
+Broadcast websocket
+Payment Response
+{
+  "success": true,
+  "data": {
+    "payment_id": "uuid",
+    "status": "PAID"
+  }
+}
+INVENTORY MODULE
+Stock Opname
+POST /stock-opnames
+Submit Opname
+POST /stock-opnames/:id/submit
+Transfer Stock
+POST /transfer-stocks
+
+Request:
+
+{
+  "from_branch_id": "uuid",
+  "to_branch_id": "uuid",
+  "items": [
+    {
+      "medicine_id": "uuid",
+      "quantity": 10
+    }
+  ]
+}
+REPORT MODULE
+Dashboard Summary
+GET /reports/dashboard
+
+Response:
+
+{
+  "success": true,
+  "data": {
+    "today_sales": 1000000,
+    "today_orders": 120,
+    "low_stock": 12
+  }
+}
+Sales Report
+GET /reports/sales
+
+Query:
+
+?start_date=
+&end_date=
+&branch_id=
+Top Medicines
+GET /reports/top-medicines
+Low Stock Report
+GET /reports/low-stock
+Expired Medicine Report
+GET /reports/expired
+USER MANAGEMENT MODULE
+List Users
+GET /users
+Create User
+POST /users
+Update User Role
+PUT /users/:id/role
+Role Types
+OWNER
+MANAGER
+CASHIER
+STAFF
+WAREHOUSE
+WEBSOCKET DESIGN
+Connection
+wss://api.apotikflow.com
+Auth Socket
+{
+  "token": "jwt"
+}
+Socket Rooms
+tenant:{tenantId}
+branch:{branchId}
+Realtime Events
+stock.updated
+{
+  "medicine_id": "uuid",
+  "branch_id": "uuid",
+  "quantity": 100,
+  "reserved_quantity": 10,
+  "available_quantity": 90
+}
+order.created
+{
+  "order_id": "uuid",
+  "status": "WAITING_PAYMENT"
+}
+payment.completed
+{
+  "payment_id": "uuid",
+  "order_id": "uuid"
+}
+notification.created
+{
+  "title": "Low Stock",
+  "message": "Paracetamol tinggal 2"
+}
+FILE UPLOAD API
+Upload Image
+POST /uploads
+
+Multipart form-data.
+
+PAGINATION STANDARD
+{
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 500,
+    "last_page": 25
+  }
+}
+FILTER STANDARD
+?search=
+&sort_by=
+&sort_order=asc
+&page=1
+&limit=20
+ERROR CODE STANDARD
+AUTH_INVALID
+TOKEN_EXPIRED
+STOCK_NOT_ENOUGH
+ORDER_NOT_FOUND
+PAYMENT_FAILED
+VALIDATION_ERROR
+FORBIDDEN
+HTTP STATUS STANDARD
+Code	Meaning
+200	Success
+201	Created
+400	Validation Error
+401	Unauthorized
+403	Forbidden
+404	Not Found
+409	Conflict
+500	Internal Error
+Security Standard
+Wajib
+
+✅ JWT
+✅ Refresh Token
+✅ RBAC
+✅ Rate Limit
+✅ Helmet
+✅ CORS
+✅ SQL Injection Protection
+✅ Audit Log
+✅ HTTPS
+
+Multi Tenant Security
+
+Semua query WAJIB filter:
+
+WHERE tenant_id = ?
+Performance Strategy
+Gunakan
+
+✅ Redis Cache
+✅ Database Index
+✅ Query Pagination
+✅ Lazy Loading
+✅ WebSocket
+✅ Background Job Queue
+
+Queue System
+
+Gunakan BullMQ.
+
+Untuk:
+
+notification
+report generation
+stock sync
+audit logging
+email
+API Documentation
+
+Gunakan:
+
+Swagger OpenAPI
+Postman Collection
+Swagger Endpoint
+/docs
+Final Architecture API
+Flutter
+↓
+REST API
+↓
+Node.js Service
+↓
+Redis
+↓
+PostgreSQL
+↓
+WebSocket Broadcast
+↓
+Flutter Realtime Update
+Hasil Akhir
+
+Desain API ini sudah siap untuk:
+
+✅ multi tenant
+✅ multi cabang
+✅ realtime stock
+✅ mobile app
+✅ desktop app
+✅ enterprise scale
+✅ ribuan transaksi
+✅ production-ready
+✅ clean architecture compatible
+✅ websocket realtime
+✅ scalable backend system

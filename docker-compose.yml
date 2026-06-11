@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: apotikflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: apotikflow
+      POSTGRES_PASSWORD: apotikflow_secret
+      POSTGRES_DB: apotikflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apotikflow -d apotikflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: apotikflow-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    container_name: apotikflow-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://apotikflow:apotikflow_secret@postgres:5432/apotikflow?schema=public
+      JWT_SECRET: dev-secret-apotikflow-change-in-production
+      JWT_EXPIRES_IN: "3600"
+      JWT_REFRESH_SECRET: dev-refresh-secret-apotikflow
+      JWT_REFRESH_EXPIRES_IN: "604800"
+      PORT: "3000"
+      API_PREFIX: api/v1
+      CORS_ORIGIN: "*"
+      REDIS_URL: redis://redis:6379
+      REDIS_PREFIX: apotikflow
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  redis_data:

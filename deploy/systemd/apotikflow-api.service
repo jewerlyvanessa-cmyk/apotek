@@ -1,0 +1,29 @@
+[Unit]
+Description=ApotikFlow API (NestJS)
+Documentation=https://github.com/apotikflow/apotikflow
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=apotikflow
+Group=apotikflow
+WorkingDirectory=/opt/apotikflow-backend
+Environment=NODE_ENV=production
+EnvironmentFile=-/opt/apotikflow-backend/.env
+EnvironmentFile=-/opt/apotikflow-backend/data/config.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Keamanan dasar
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/apotikflow-backend/data
+
+[Install]
+WantedBy=multi-user.target

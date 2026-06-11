@@ -1,0 +1,12 @@
+---
+description: Gunakan data riil dari API/DB, bukan demo atau placeholder
+alwaysApply: true
+---
+
+# Data riil
+
+- Jangan pakai akun seed demo (`@apotikflow.com` / `password123`) untuk uji atau asumsi kecuali user minta eksplisit.
+- Jangan pre-fill kredensial demo di UI (login, form user, form tenant).
+- Stok order: selalu dari `GET /stocks/realtime/:medicineId` (`available_quantity`). Jangan fallback angka palsu (mis. 99/999) jika API gagal — tampilkan error atau batasi qty ke data yang sudah diketahui.
+- Dashboard, laporan, pembayaran, inventori: data dari repository/API; jangan hardcode contoh transaksi atau metrik.
+- Upload file: web pakai `MultipartFile.fromBytes`; jangan set header `Content-Type: multipart/form-data` manual (biarkan Dio set boundary).
