@@ -12,6 +12,10 @@ final categoriesProvider =
   return ref.watch(catalogRepositoryProvider).getCategories();
 });
 
+final unitsProvider = FutureProvider.autoDispose<List<MedicineUnit>>((ref) async {
+  return ref.watch(catalogRepositoryProvider).getUnits();
+});
+
 final suppliersProvider = FutureProvider.autoDispose<List<Supplier>>((ref) async {
   return ref.watch(catalogRepositoryProvider).getSuppliers();
 });

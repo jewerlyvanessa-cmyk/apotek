@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../shared/components/barcode_search_field.dart';
 import '../../../../shared/layouts/app_scaffold.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/medicine_list_query.dart';
 import '../providers/medicine_provider.dart';
+import '../widgets/catalog_form_dialogs.dart';
 import '../widgets/medicine_card.dart';
 
 class MedicineListPage extends ConsumerStatefulWidget {
@@ -44,21 +46,25 @@ class _MedicineListPageState extends ConsumerState<MedicineListPage> {
   Widget build(BuildContext context) {
     final medicinesAsync = ref.watch(medicineListProvider(_query));
     final typesAsync = ref.watch(productTypesProvider);
+    final canManageCatalog = ref.watch(authProvider).user?.canManageCatalog == true;
 
     return AppScaffold(
       title: 'Katalog Produk',
       actions: [
-        IconButton(
-          tooltip: 'Master katalog',
-          icon: const Icon(Icons.tune),
-          onPressed: () => context.push('/medicines/master'),
-        ),
+        if (canManageCatalog)
+          IconButton(
+            tooltip: 'Master katalog',
+            icon: const Icon(Icons.tune),
+            onPressed: () => context.push('/medicines/master'),
+          ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/medicines/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah'),
-      ),
+      floatingActionButton: canManageCatalog
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/medicines/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah'),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -80,6 +86,28 @@ class _MedicineListPageState extends ConsumerState<MedicineListPage> {
                   },
                   onBarcode: (code) async => _onSearch(code),
                 ),
+                if (canManageCatalog) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.category_outlined, size: 18),
+                          label: const Text('Tambah Kategori'),
+                          onPressed: () => showCategoryFormDialog(context, ref),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                          label: const Text('Tambah Supplier'),
+                          onPressed: () => showSupplierFormDialog(context, ref),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.sm),
                 typesAsync.when(
                   loading: () => const SizedBox.shrink(),
@@ -161,7 +189,9 @@ class _MedicineListPageState extends ConsumerState<MedicineListPage> {
                       final med = medicines[index];
                       return MedicineCard(
                         medicine: med,
-                        onTap: () => context.push('/medicines/${med.id}/edit'),
+                        onTap: canManageCatalog
+                            ? () => context.push('/medicines/${med.id}/edit')
+                            : () {},
                       );
                     },
                   ),

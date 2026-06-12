@@ -295,6 +295,9 @@ class AuthUser extends Equatable {
   /// Owner atau Manajer Pusat — boleh kelola user tenant.
   bool get canManageUsers => isOwner || isTenantWideManager;
 
+  /// Owner, Manajer, atau Gudang — boleh kelola master katalog.
+  bool get canManageCatalog => isOwner || isManager || isWarehouse;
+
   /// Kepala cabang: MANAGER di cabang aktif (bukan Manajer Pusat).
   bool get isBranchManager {
     if (!isManager) return false;

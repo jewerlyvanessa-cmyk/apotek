@@ -35,6 +35,7 @@ model Tenant {
   suppliers    Supplier[]
   customers    Customer[]
   categories      MedicineCategory[]
+  medicineUnits   MedicineUnit[]
   productTypes    ProductTypeDefinition[]
   medicines       Medicine[]
   stocks       Stock[]
@@ -175,6 +176,15 @@ enum BranchStockMode {
   @@map("branch_stock_mode")
 }
 
+enum DrugClassification {
+  PRESCRIPTION
+  LIMITED_OTC
+  OTC
+  CONTROLLED
+
+  @@map("drug_classification")
+}
+
 model MedicineCategory {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
@@ -187,6 +197,19 @@ model MedicineCategory {
 
   @@unique([tenantId, name])
   @@map("medicine_categories")
+}
+
+model MedicineUnit {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@map("medicine_units")
 }
 
 model ProductTypeDefinition {
@@ -215,12 +238,14 @@ model Medicine {
   sku                  String?  @db.VarChar(100)
   barcode              String?  @db.VarChar(100)
   name                 String   @db.VarChar(255)
+  composition          String?  @db.VarChar(500)
   unit                 String?  @db.VarChar(50)
   buyPrice             Decimal  @default(0) @map("buy_price") @db.Decimal(18, 2)
   sellPrice            Decimal  @default(0) @map("sell_price") @db.Decimal(18, 2)
   minStock             Int         @default(0) @map("min_stock")
-  productTypeId        String      @map("product_type_id") @db.Uuid
-  requiresPrescription Boolean     @default(false) @map("requires_prescription")
+  productTypeId        String               @map("product_type_id") @db.Uuid
+  drugClassification   DrugClassification?  @map("drug_classification")
+  requiresPrescription Boolean              @default(false) @map("requires_prescription")
   imageUrl             String?  @map("image_url") @db.VarChar(1024)
   isActive             Boolean  @default(true) @map("is_active")
   createdAt            DateTime @default(now()) @map("created_at")

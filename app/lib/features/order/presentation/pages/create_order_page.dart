@@ -20,6 +20,7 @@ import '../../data/order_repository.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/entities/prescription_info.dart';
 import '../providers/cart_provider.dart';
+import '../../../medicine/presentation/widgets/drug_classification_chip.dart';
 import '../../../medicine/presentation/widgets/product_type_chip.dart';
 import '../widgets/prescription_form_section.dart';
 import '../../../pharmacy/presentation/pages/pharmacy_reviews_page.dart';
@@ -128,6 +129,7 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
             availableStock: maxQty < 1 ? 1 : maxQty,
             unit: i.unit,
             productType: i.productType,
+            drugClassification: i.drugClassification,
             requiresPrescription: i.requiresPrescription,
             usageInstructions: i.usageInstructions,
           );
@@ -162,8 +164,9 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
     super.dispose();
   }
 
-  bool _cartNeedsPrescription(List<CartItem> cart) =>
-      cart.any((c) => c.requiresPrescription);
+  bool _cartNeedsPrescription(List<CartItem> cart) => cart.any(
+        (c) => c.displayDrugClassification?.requiresPrescription == true,
+      );
 
   bool _showPrescriptionForm(List<CartItem> cart) =>
       !widget.isEdit && _orderWithPrescription;
@@ -354,6 +357,7 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
             unit: medicine.unit,
             rackPosition: rack?.trim().isNotEmpty == true ? rack!.trim() : null,
             productType: medicine.productType,
+            drugClassification: medicine.drugClassification,
             requiresPrescription: medicine.requiresPrescription,
           );
     } catch (e) {
@@ -409,25 +413,6 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _resepBadge() {
-    return Container(
-      margin: const EdgeInsets.only(left: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: const Text(
-        'Resep',
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: AppColors.warning,
-        ),
       ),
     );
   }
@@ -535,9 +520,14 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
                                             type: item.productType,
                                             compact: true,
                                           ),
-                                          if (item.requiresPrescription) ...[
+                                          if (item.displayDrugClassification !=
+                                              null) ...[
                                             const SizedBox(width: 4),
-                                            _resepBadge(),
+                                            DrugClassificationChip(
+                                              classification:
+                                                  item.displayDrugClassification!,
+                                              compact: true,
+                                            ),
                                           ],
                                         ],
                                       ),
@@ -968,7 +958,7 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
                             ),
                             subtitle: Text(
                               _cartNeedsPrescription(cart)
-                                  ? 'Obat bertanda resep boleh dijual tanpa resep. Centang hanya jika pelanggan membawa resep fisik.'
+                                  ? 'Ada obat keras/narkotika di keranjang. Centang hanya jika pelanggan membawa resep fisik.'
                                   : 'Centang jika pelanggan membawa resep fisik',
                               style: const TextStyle(fontSize: 12),
                             ),
@@ -1142,9 +1132,13 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
                                   type: m.productType,
                                   compact: true,
                                 ),
-                                if (m.requiresPrescription) ...[
+                                if (m.displayDrugClassification != null) ...[
                                   const SizedBox(width: 4),
-                                  _resepBadge(),
+                                  DrugClassificationChip(
+                                    classification:
+                                        m.displayDrugClassification!,
+                                    compact: true,
+                                  ),
                                 ],
                                         ],
                                       ),

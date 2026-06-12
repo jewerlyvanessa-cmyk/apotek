@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { UsersModule } from './modules/users/users.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { UnitsModule } from './modules/units/units.module';
 import { ProductTypesModule } from './modules/product-types/product-types.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { CustomersModule } from './modules/customers/customers.module';
@@ -79,6 +80,7 @@ const sentryProviders = sentryEnabled
     BranchesModule,
     UsersModule,
     CategoriesModule,
+    UnitsModule,
     ProductTypesModule,
     SuppliersModule,
     CustomersModule,

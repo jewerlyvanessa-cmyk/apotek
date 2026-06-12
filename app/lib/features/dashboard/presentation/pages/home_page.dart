@@ -49,6 +49,11 @@ class HomePage extends ConsumerWidget {
       data: (modes) => showWarehouseEtalaseMenus(user, modes),
       orElse: () => false,
     );
+    final branchCountAsync = ref.watch(tenantActiveBranchCountProvider);
+    final showMultiBranchMenus = branchCountAsync.maybeWhen(
+      data: (count) => showMultiBranchWarehouseMenus(count),
+      orElse: () => true,
+    );
     return AppScaffold(
       title: user.contextTitle,
       body: Padding(
@@ -90,6 +95,7 @@ class HomePage extends ConsumerWidget {
                 context,
                 user,
                 showWarehouseEtalaseMenus: showEtalaseMenus,
+                showMultiBranchMenus: showMultiBranchMenus,
               ),
             ),
             if (user.isStaff) ...[

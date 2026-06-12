@@ -27,11 +27,13 @@ bool isRouteAllowedForActiveRole(String path, AuthUser user) {
   if (path.startsWith('/admin/branches/') && path.endsWith('/stock-mode')) {
     return activeIs('OWNER') || activeIs('MANAGER');
   }
-  if (path.startsWith('/payments/') ||
-      path.startsWith('/orders/') ||
-      path == '/medicines/new' ||
-      (path.startsWith('/medicines/') && path.endsWith('/edit'))) {
+  if (path.startsWith('/payments/') || path.startsWith('/orders/')) {
     return role != 'SUPER_ADMIN';
+  }
+  if (path == '/medicines/new' ||
+      path == '/medicines/master' ||
+      (path.startsWith('/medicines/') && path.endsWith('/edit'))) {
+    return user.canManageCatalog;
   }
 
   if (path.startsWith('/platform')) return activeIs('SUPER_ADMIN');
@@ -71,7 +73,8 @@ bool isRouteAllowedForActiveRole(String path, AuthUser user) {
   if (path == '/medicines') {
     return activeIs('OWNER') ||
         activeIs('MANAGER') ||
-        activeIs('PHARMACIST');
+        activeIs('PHARMACIST') ||
+        activeIs('WAREHOUSE');
   }
   if (path == '/warehouse') {
     return activeIs('OWNER') ||

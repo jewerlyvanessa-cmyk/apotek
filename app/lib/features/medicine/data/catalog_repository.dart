@@ -76,6 +76,36 @@ class CatalogRepository {
     if (!api.success) throw Exception(api.message);
   }
 
+  Future<List<MedicineUnit>> getUnits() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/units',
+      queryParameters: {'limit': 100},
+    );
+    return _parseList(response.data, MedicineUnit.fromJson);
+  }
+
+  Future<MedicineUnit> createUnit(String name) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/units',
+      data: {'name': name},
+    );
+    return _parseOne(response.data, MedicineUnit.fromJson);
+  }
+
+  Future<MedicineUnit> updateUnit(String id, String name) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/units/$id',
+      data: {'name': name},
+    );
+    return _parseOne(response.data, MedicineUnit.fromJson);
+  }
+
+  Future<void> deleteUnit(String id) async {
+    final response = await _dio.delete<Map<String, dynamic>>('/units/$id');
+    final api = ApiResponse<dynamic>.fromJson(response.data!, null);
+    if (!api.success) throw Exception(api.message);
+  }
+
   Future<List<Supplier>> getSuppliers() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/suppliers',

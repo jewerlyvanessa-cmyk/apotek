@@ -5,6 +5,7 @@ import {
   ensureBranchStockLocations,
   resolveInboundLocationId,
 } from '../src/common/utils/stock-location.util';
+import { ensureDefaultMedicineUnits } from '../src/common/utils/medicine-unit-defaults.util';
 import { ensureDefaultProductTypes } from '../src/common/utils/product-type-defaults.util';
 
 const prisma = new PrismaClient();
@@ -40,6 +41,7 @@ async function main() {
   });
 
   await ensureDefaultProductTypes(prisma, tenant.id);
+  await ensureDefaultMedicineUnits(prisma, tenant.id);
 
   let branch = await prisma.branch.findFirst({
     where: { tenantId: tenant.id, code: 'PUSAT' },
@@ -268,6 +270,7 @@ async function main() {
       batch: 'BATCH-001',
       stockQty: 100,
       productType: 'DRUG' as const,
+      drugClassification: 'LIMITED_OTC' as const,
     },
     {
       name: 'Amoxicillin 500mg',
@@ -281,7 +284,7 @@ async function main() {
       batch: 'BATCH-002',
       stockQty: 50,
       productType: 'DRUG' as const,
-      requiresPrescription: true,
+      drugClassification: 'PRESCRIPTION' as const,
     },
     {
       name: 'Vitamin C 1000mg',
@@ -308,6 +311,7 @@ async function main() {
       batch: 'BATCH-004',
       stockQty: 75,
       productType: 'DRUG' as const,
+      drugClassification: 'OTC' as const,
     },
     {
       name: 'Masker Medis (50 pcs)',
@@ -364,7 +368,11 @@ async function main() {
         sellPrice: m.sellPrice,
         minStock: m.minStock,
         productTypeId: productType.id,
-        requiresPrescription: m.requiresPrescription ?? false,
+        drugClassification: m.drugClassification ?? null,
+        requiresPrescription:
+          m.drugClassification === 'PRESCRIPTION' ||
+          m.drugClassification === 'CONTROLLED' ||
+          (m.requiresPrescription ?? false),
       },
     });
 

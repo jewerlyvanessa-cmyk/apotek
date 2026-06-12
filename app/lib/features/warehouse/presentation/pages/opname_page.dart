@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -28,7 +27,11 @@ class _OpnamePageState extends ConsumerState<OpnamePage> {
 
   final Map<String, int> _actualByMedicine = {};
   final Map<String, Medicine> _medicineById = {};
+  final Map<String, Medicine> _barcodeCache = {};
+  final List<String> _scanQueue = [];
+  bool _drainingScanQueue = false;
   String? _activeOpnameNumber;
+  String? _lastScannedLabel;
 
   @override
   void dispose() {
@@ -36,30 +39,77 @@ class _OpnamePageState extends ConsumerState<OpnamePage> {
     super.dispose();
   }
 
-  Future<void> _recordBarcodeScan(String barcode) async {
-    final med = await findMedicineByBarcodeWithFeedback(context, ref, barcode);
-    if (med == null || !mounted) return;
+  int get _pendingScanCount =>
+      _scanQueue.length + (_drainingScanQueue ? 1 : 0);
 
+  void _applyMedicineQty(Medicine med, {bool showSnackBar = true}) {
+    final total = (_actualByMedicine[med.id] ?? 0) + 1;
     setState(() {
       _medicineById[med.id] = med;
-      _actualByMedicine[med.id] = (_actualByMedicine[med.id] ?? 0) + 1;
+      _actualByMedicine[med.id] = total;
+      _lastScannedLabel = '${med.name} · $total';
     });
+    if (showSnackBar && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${med.name} +1 (total: $total)'),
+          duration: const Duration(milliseconds: 700),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
 
-    final total = _actualByMedicine[med.id]!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${med.name} +1 (total: $total)'),
-        duration: const Duration(milliseconds: 900),
-        backgroundColor: AppColors.success,
-      ),
+  Future<void> _processBarcodeScan(String barcode) async {
+    final med = await findMedicineByBarcodeWithFeedback(
+      context,
+      ref,
+      barcode,
+      cache: _barcodeCache,
+      showNotFoundSnackBar: _scanQueue.isEmpty,
     );
+    if (med == null || !mounted) return;
+    _applyMedicineQty(med, showSnackBar: _scanQueue.isEmpty);
+  }
+
+  Future<void> _enqueueBarcodeScan(String barcode) async {
+    final code = barcode.trim();
+    if (code.isEmpty) return;
+
+    final cached = _barcodeCache[code];
+    if (cached != null) {
+      _applyMedicineQty(cached);
+      return;
+    }
+
+    setState(() => _scanQueue.add(code));
+    _drainScanQueue();
+  }
+
+  Future<void> _drainScanQueue() async {
+    if (_drainingScanQueue) return;
+    _drainingScanQueue = true;
+    if (mounted) setState(() {});
+    while (_scanQueue.isNotEmpty && mounted) {
+      final code = _scanQueue.first;
+      await _processBarcodeScan(code);
+      if (!mounted) break;
+      setState(() {
+        if (_scanQueue.isNotEmpty && _scanQueue.first == code) {
+          _scanQueue.removeAt(0);
+        }
+      });
+    }
+    _drainingScanQueue = false;
+    if (mounted) setState(() {});
   }
 
   Future<void> _openContinuousScan() async {
     await openContinuousBarcodeScanner(
       context,
       title: 'Scan Opname',
-      onBarcode: _recordBarcodeScan,
+      onBarcode: _enqueueBarcodeScan,
     );
   }
 
@@ -79,7 +129,7 @@ class _OpnamePageState extends ConsumerState<OpnamePage> {
     setState(() => _busy = true);
 
     try {
-      final branchId = ref.read(warehouseBranchIdProvider);
+      final branchId = ref.read(effectiveWarehouseBranchIdProvider);
       if (branchId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -176,29 +226,59 @@ class _OpnamePageState extends ConsumerState<OpnamePage> {
             );
           },
         ),
-        if (!kIsWeb) ...[
-          ElevatedButton.icon(
-            onPressed: _openContinuousScan,
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Scan Opname (multi barcode)'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
+        ElevatedButton.icon(
+          onPressed: _openContinuousScan,
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Scan Opname (multi barcode/QR)'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
           ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Kamera berkelanjutan, scanner USB, atau tombol multi-scan di field bawah. '
+          'Scan ulang barcode yang sama untuk +1 qty.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+        ),
+        if (_pendingScanCount > 0) ...[
           const SizedBox(height: AppSpacing.sm),
+          LinearProgressIndicator(
+            minHeight: 3,
+            value: _pendingScanCount > 5 ? null : 1 / (_pendingScanCount + 1),
+          ),
           Text(
-            'Buka kamera dan scan banyak barcode tanpa keluar. Scan ulang barcode yang sama untuk menambah qty.',
+            'Memproses $_pendingScanCount scan...',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+        if (_lastScannedLabel != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Terakhir: $_lastScannedLabel',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
                 ),
           ),
-          const SizedBox(height: AppSpacing.md),
         ],
+        const SizedBox(height: AppSpacing.md),
         BarcodeSearchField(
           controller: _searchController,
-          labelText: 'Cari obat untuk opname',
-          onSubmitted: (v) => setState(() => _search = v),
-          onBarcode: _recordBarcodeScan,
+          labelText: 'Scan / cari obat untuk opname',
+          showContinuousScan: true,
+          continuousScanTitle: 'Scan Opname',
+          autofocus: true,
+          onSubmitted: (v) {
+            final code = v.trim();
+            if (code.isNotEmpty) {
+              _enqueueBarcodeScan(code);
+              _searchController.clear();
+              setState(() => _search = '');
+            }
+          },
+          onChanged: (v) => setState(() => _search = v),
+          onBarcode: _enqueueBarcodeScan,
         ),
         if (recorded.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
@@ -319,7 +399,7 @@ class _OpnamePageState extends ConsumerState<OpnamePage> {
 }
 
 final _opnameListProvider = FutureProvider.autoDispose<List<StockOpname>>((ref) async {
-  final branchId = ref.watch(warehouseBranchIdProvider);
+  final branchId = ref.watch(effectiveWarehouseBranchIdProvider);
   if (branchId == null) return [];
   return ref.watch(warehouseRepositoryProvider).listOpnames(branchId: branchId);
 });

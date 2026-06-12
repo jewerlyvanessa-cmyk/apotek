@@ -6,7 +6,11 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { CreateMedicineDto } from './dto/create-medicine.dto';
 import { MedicineQueryDto } from './dto/medicine-query.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
-import { assertPrescriptionForType } from './medicine-product.util';
+import { resolveDrugClassification } from '../../common/constants/drug-classification';
+import {
+  assertDrugClassificationForType,
+  assertPrescriptionForType,
+} from './medicine-product.util';
 import {
   findOrCreateStockRow,
   loadBranchForStock,
@@ -80,6 +84,7 @@ export class MedicinesService {
         ? {
             OR: [
               { name: { contains: query.search, mode: 'insensitive' } },
+              { composition: { contains: query.search, mode: 'insensitive' } },
               { barcode: { contains: query.search, mode: 'insensitive' } },
               { sku: { contains: query.search, mode: 'insensitive' } },
             ],
@@ -119,7 +124,13 @@ export class MedicinesService {
   async create(tenantId: string, user: JwtPayloadUser, dto: CreateMedicineDto) {
     const { batch, branch_id: branchIdFromDto, ...data } = dto;
     const type = await this.resolveType(tenantId, data);
-    const requiresPrescription = data.requires_prescription ?? false;
+    const { drugClassification, requiresPrescription } = resolveDrugClassification(
+      {
+        drug_classification: data.drug_classification,
+        requires_prescription: data.requires_prescription,
+      },
+    );
+    assertDrugClassificationForType(type.allowsPrescription, drugClassification);
     assertPrescriptionForType(type.allowsPrescription, requiresPrescription);
 
     return this.prisma.$transaction(async (tx) => {
@@ -127,6 +138,7 @@ export class MedicinesService {
         data: {
           tenantId,
           name: data.name,
+          composition: data.composition?.trim() || null,
           barcode: data.barcode,
           sku: data.sku,
           categoryId: data.category_id,
@@ -136,6 +148,7 @@ export class MedicinesService {
           sellPrice: data.sell_price,
           minStock: data.min_stock ?? 0,
           productTypeId: type.id,
+          drugClassification,
           requiresPrescription,
         },
         include: medicineInclude,
@@ -210,17 +223,26 @@ export class MedicinesService {
             allowsPrescription: existing.productType.allowsPrescription,
           };
 
-    const requiresPrescription =
-      dto.requires_prescription !== undefined
-        ? dto.requires_prescription
-        : existing.requiresPrescription;
+    const { drugClassification, requiresPrescription } = resolveDrugClassification(
+      {
+        drug_classification: dto.drug_classification,
+        requires_prescription: dto.requires_prescription,
+        existingClassification: existing.drugClassification,
+        existingRequiresPrescription: existing.requiresPrescription,
+      },
+    );
 
+    assertDrugClassificationForType(type.allowsPrescription, drugClassification);
     assertPrescriptionForType(type.allowsPrescription, requiresPrescription);
 
     return this.prisma.medicine.update({
       where: { id },
       data: {
         name: dto.name,
+        composition:
+          dto.composition !== undefined
+            ? dto.composition?.trim() || null
+            : undefined,
         barcode: dto.barcode,
         sku: dto.sku,
         categoryId: dto.category_id,
@@ -230,6 +252,7 @@ export class MedicinesService {
         sellPrice: dto.sell_price,
         minStock: dto.min_stock,
         productTypeId: type.id,
+        drugClassification,
         requiresPrescription,
         isActive: dto.is_active,
       },

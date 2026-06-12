@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -8,6 +9,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { DrugClassification } from '../../../common/constants/drug-classification';
 
 export class UpdateMedicineDto {
   @IsOptional()
@@ -22,6 +24,10 @@ export class UpdateMedicineDto {
   @IsOptional()
   @IsString()
   sku?: string;
+
+  @IsOptional()
+  @IsString()
+  composition?: string;
 
   @IsOptional()
   @IsUUID()
@@ -62,6 +68,11 @@ export class UpdateMedicineDto {
   @IsString()
   product_type?: string;
 
+  @IsOptional()
+  @IsEnum(DrugClassification)
+  drug_classification?: DrugClassification | null;
+
+  /** @deprecated gunakan drug_classification */
   @IsOptional()
   @IsBoolean()
   requires_prescription?: boolean;

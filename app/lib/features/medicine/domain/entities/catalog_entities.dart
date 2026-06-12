@@ -54,6 +54,23 @@ class MedicineCategory extends Equatable {
   List<Object?> get props => [id, name];
 }
 
+class MedicineUnit extends Equatable {
+  const MedicineUnit({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  factory MedicineUnit.fromJson(Map<String, dynamic> json) {
+    return MedicineUnit(
+      id: json['id'] as String,
+      name: json['name'] as String,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, name];
+}
+
 class Supplier extends Equatable {
   const Supplier({
     required this.id,

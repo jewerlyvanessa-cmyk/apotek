@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,14 +8,18 @@ import '../../../../app/theme/app_spacing.dart';
 import '../../../../shared/components/app_button.dart';
 import '../../../../shared/components/app_text_field.dart';
 import '../../../../shared/layouts/app_scaffold.dart';
+import '../../../../shared/widgets/async_error_view.dart';
 import '../../../admin/data/admin_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/medicine_repository.dart';
 import '../../domain/entities/catalog_entities.dart';
+import '../../../../core/constants/drug_classification.dart';
 import '../../domain/entities/medicine.dart';
+import '../widgets/drug_classification_chip.dart';
 import '../../../inventory/presentation/providers/stock_provider.dart';
 import '../providers/medicine_list_query.dart';
 import '../providers/medicine_provider.dart';
+import '../widgets/catalog_form_dialogs.dart';
 
 class MedicineFormPage extends ConsumerStatefulWidget {
   const MedicineFormPage({super.key, this.medicineId});
@@ -30,9 +35,10 @@ class MedicineFormPage extends ConsumerStatefulWidget {
 class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _compositionController = TextEditingController();
   final _barcodeController = TextEditingController();
   final _skuController = TextEditingController();
-  final _unitController = TextEditingController(text: 'STRIP');
+  String _unit = 'STRIP';
   final _buyPriceController = TextEditingController();
   final _sellPriceController = TextEditingController();
   final _minStockController = TextEditingController(text: '0');
@@ -44,18 +50,18 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
   DateTime? _expiredDate;
   String? _supplierId;
   String? _productTypeId;
-  bool _requiresPrescription = false;
+  DrugClassification? _drugClassification;
   bool _isLoading = false;
-  bool _initialized = false;
+  String? _loadedMedicineId;
   XFile? _pickedImage;
   final _picker = ImagePicker();
 
   @override
   void dispose() {
     _nameController.dispose();
+    _compositionController.dispose();
     _barcodeController.dispose();
     _skuController.dispose();
-    _unitController.dispose();
     _buyPriceController.dispose();
     _sellPriceController.dispose();
     _minStockController.dispose();
@@ -84,20 +90,29 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
     }
   }
 
-  void _fillForm(Medicine m) {
-    if (_initialized) return;
-    _initialized = true;
+  @override
+  void didUpdateWidget(MedicineFormPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.medicineId != widget.medicineId) {
+      _loadedMedicineId = null;
+    }
+  }
+
+  void _applyMedicine(Medicine m) {
+    _loadedMedicineId = m.id;
     _nameController.text = m.name;
+    _compositionController.text = m.composition ?? '';
     _barcodeController.text = m.barcode ?? '';
     _skuController.text = m.sku ?? '';
-    _unitController.text = m.unit;
+    _unit = m.unit;
     _buyPriceController.text = m.buyPrice.round().toString();
     _sellPriceController.text = m.sellPrice.round().toString();
     _minStockController.text = m.minStock.toString();
     _categoryId = m.categoryId;
     _supplierId = m.supplierId;
     _productTypeId = m.productTypeId;
-    _requiresPrescription = m.requiresPrescription;
+    _drugClassification = m.drugClassification ??
+        (m.requiresPrescription ? DrugClassification.prescription : null);
   }
 
   Future<void> _pickImage() async {
@@ -141,18 +156,21 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
 
     final payload = <String, dynamic>{
       'name': _nameController.text.trim(),
+      'composition': _compositionController.text.trim().isEmpty
+          ? null
+          : _compositionController.text.trim(),
       'barcode': _barcodeController.text.trim().isEmpty
           ? null
           : _barcodeController.text.trim(),
       'sku': _skuController.text.trim().isEmpty
           ? null
           : _skuController.text.trim(),
-      'unit': _unitController.text.trim(),
+      'unit': _unit.trim(),
       'buy_price': int.parse(_buyPriceController.text),
       'sell_price': int.parse(_sellPriceController.text),
       'min_stock': int.tryParse(_minStockController.text) ?? 0,
       if (_productTypeId != null) 'product_type_id': _productTypeId,
-      'requires_prescription': _requiresPrescription,
+      'drug_classification': _drugClassification?.apiValue,
       if (_categoryId != null) 'category_id': _categoryId,
       if (_supplierId != null) 'supplier_id': _supplierId,
     };
@@ -197,9 +215,12 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e is DioException && e.response?.statusCode == 403
+            ? 'Tidak punya izin mengelola katalog. Gunakan akun Owner, Manajer, atau Gudang.'
+            : friendlyErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            content: Text(message),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -213,6 +234,7 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final suppliersAsync = ref.watch(suppliersProvider);
+    final unitsAsync = ref.watch(unitsProvider);
     final productTypesAsync = ref.watch(productTypesProvider);
 
     if (widget.isEdit) {
@@ -227,21 +249,40 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
           body: Center(child: Text('$e')),
         ),
         data: (medicine) {
-          _fillForm(medicine);
-          return _buildForm(categoriesAsync, suppliersAsync, productTypesAsync);
+          if (_loadedMedicineId != medicine.id) {
+            _applyMedicine(medicine);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _loadedMedicineId == medicine.id) {
+                setState(() {});
+              }
+            });
+          }
+          return _buildForm(
+            categoriesAsync,
+            suppliersAsync,
+            unitsAsync,
+            productTypesAsync,
+          );
         },
       );
     }
 
-    return _buildForm(categoriesAsync, suppliersAsync, productTypesAsync);
+    return _buildForm(
+      categoriesAsync,
+      suppliersAsync,
+      unitsAsync,
+      productTypesAsync,
+    );
   }
 
   Widget _buildForm(
     AsyncValue<List<MedicineCategory>> categoriesAsync,
     AsyncValue<List<Supplier>> suppliersAsync,
+    AsyncValue<List<MedicineUnit>> unitsAsync,
     AsyncValue<List<ProductTypeDef>> productTypesAsync,
   ) {
     final user = ref.watch(authProvider).user;
+    final canManageCatalog = user?.canManageCatalog == true;
     final needsBranchForStock =
         !widget.isEdit && (user?.isTenantWideManager == true);
     final selectedTypeAllowsRx = productTypesAsync.maybeWhen(
@@ -316,10 +357,13 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                 error: (error, stack) => const SizedBox.shrink(),
                 data: (types) {
                   final active = types.where((t) => t.isActive).toList();
-                  if (_productTypeId == null && active.isNotEmpty) {
+                  if (!widget.isEdit &&
+                      _productTypeId == null &&
+                      active.isNotEmpty) {
                     _productTypeId = active.first.id;
                   }
                   return DropdownButtonFormField<String>(
+                    key: ValueKey('ptype-${_loadedMedicineId ?? 'new'}'),
                     initialValue: _productTypeId,
                     decoration: const InputDecoration(labelText: 'Tipe produk'),
                     items: active
@@ -343,12 +387,12 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                       setState(() {
                         _productTypeId = v;
                         if (type != null && !type.allowsPrescription) {
-                          _requiresPrescription = false;
+                          _drugClassification = null;
                         }
                         if (type != null &&
                             type.code != 'DRUG' &&
-                            _unitController.text == 'STRIP') {
-                          _unitController.text = 'PCS';
+                            _unit == 'STRIP') {
+                          _unit = 'PCS';
                         }
                       });
                     },
@@ -366,6 +410,13 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                     : null,
               ),
               const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: _compositionController,
+                label: 'Kandungan / Sediaan',
+                hint: 'Contoh: Paracetamol 500 mg · Tablet',
+                maxLines: 2,
+              ),
+              const SizedBox(height: AppSpacing.md),
               AppTextField(controller: _barcodeController, label: 'Barcode'),
               const SizedBox(height: AppSpacing.md),
               AppTextField(controller: _skuController, label: 'SKU'),
@@ -373,42 +424,133 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
               categoriesAsync.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (error, stack) => const SizedBox.shrink(),
-                data: (cats) => DropdownButtonFormField<String?>(
-                  initialValue: _categoryId,
-                  decoration: const InputDecoration(labelText: 'Kategori'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('— Pilih —'),
+                data: (cats) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        key: ValueKey('cat-${_loadedMedicineId ?? 'new'}'),
+                        initialValue: _categoryId,
+                        decoration: const InputDecoration(labelText: 'Kategori'),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('— Pilih —'),
+                          ),
+                          ...cats.map(
+                            (c) => DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _categoryId = v),
+                      ),
                     ),
-                    ...cats.map(
-                      (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
-                    ),
+                    if (canManageCatalog)
+                      IconButton(
+                        tooltip: 'Tambah kategori',
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () async {
+                          final id = await showCategoryFormDialog(context, ref);
+                          if (id != null && mounted) {
+                            setState(() => _categoryId = id);
+                          }
+                        },
+                      ),
                   ],
-                  onChanged: (v) => setState(() => _categoryId = v),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
               suppliersAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (error, stack) => const SizedBox.shrink(),
-                data: (sups) => DropdownButtonFormField<String?>(
-                  initialValue: _supplierId,
-                  decoration: const InputDecoration(labelText: 'Supplier'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('— Pilih —'),
+                data: (sups) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        key: ValueKey('sup-${_loadedMedicineId ?? 'new'}'),
+                        initialValue: _supplierId,
+                        decoration: const InputDecoration(labelText: 'Supplier'),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('— Pilih —'),
+                          ),
+                          ...sups.map(
+                            (s) => DropdownMenuItem(
+                              value: s.id,
+                              child: Text(s.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _supplierId = v),
+                      ),
                     ),
-                    ...sups.map(
-                      (s) => DropdownMenuItem(value: s.id, child: Text(s.name)),
-                    ),
+                    if (canManageCatalog)
+                      IconButton(
+                        tooltip: 'Tambah supplier',
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () async {
+                          final id = await showSupplierFormDialog(context, ref);
+                          if (id != null && mounted) {
+                            setState(() => _supplierId = id);
+                          }
+                        },
+                      ),
                   ],
-                  onChanged: (v) => setState(() => _supplierId = v),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              AppTextField(controller: _unitController, label: 'Satuan'),
+              unitsAsync.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (error, stack) => const SizedBox.shrink(),
+                data: (units) {
+                  final unitNames = units.map((u) => u.name).toList();
+                  if (!unitNames.contains(_unit)) {
+                    unitNames.add(_unit);
+                    unitNames.sort();
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey('unit-${_loadedMedicineId ?? 'new'}'),
+                          initialValue: _unit,
+                          decoration: const InputDecoration(labelText: 'Satuan'),
+                          items: unitNames
+                              .map(
+                                (name) => DropdownMenuItem(
+                                  value: name,
+                                  child: Text(name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setState(() => _unit = v);
+                          },
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Pilih satuan' : null,
+                        ),
+                      ),
+                      if (canManageCatalog)
+                        IconButton(
+                          tooltip: 'Tambah satuan',
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: () async {
+                            final name =
+                                await showUnitFormDialog(context, ref);
+                            if (name != null && mounted) {
+                              setState(() => _unit = name);
+                            }
+                          },
+                        ),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
@@ -501,11 +643,58 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
               ],
               if (selectedTypeAllowsRx) ...[
                 const SizedBox(height: AppSpacing.md),
-                SwitchListTile(
-                  title: const Text('Butuh resep dokter'),
-                  subtitle: const Text('Hanya untuk tipe yang mendukung resep'),
-                  value: _requiresPrescription,
-                  onChanged: (v) => setState(() => _requiresPrescription = v),
+                DropdownButtonFormField<DrugClassification?>(
+                  key: ValueKey('drug-${_loadedMedicineId ?? 'new'}'),
+                  initialValue: _drugClassification,
+                  decoration: const InputDecoration(
+                    labelText: 'Golongan obat',
+                    helperText: 'Merah · Biru · Hijau · Hitam (narkotika)',
+                  ),
+                  items: [
+                    const DropdownMenuItem<DrugClassification?>(
+                      value: null,
+                      child: Text('— Pilih —'),
+                    ),
+                    ...DrugClassification.catalogOptions.map(
+                      (c) => DropdownMenuItem<DrugClassification?>(
+                        value: c,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: c.color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(c.label),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  selectedItemBuilder: (context) => [
+                    const Text('— Pilih —'),
+                    ...DrugClassification.catalogOptions.map(
+                      (c) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          DrugClassificationChip(
+                            classification: c,
+                            compact: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _drugClassification = v),
+                  validator: (v) =>
+                      selectedTypeAllowsRx && v == null
+                          ? 'Pilih golongan obat'
+                          : null,
                 ),
               ],
               const SizedBox(height: AppSpacing.xl),

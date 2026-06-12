@@ -36,7 +36,8 @@ class _TransferPageState extends ConsumerState<TransferPage> {
 
   Future<void> _submitTransfer() async {
     final user = ref.read(authProvider).user;
-    final fromBranchId = ref.read(warehouseBranchIdProvider) ?? user?.branchId;
+    final fromBranchId = ref.read(effectiveWarehouseBranchIdProvider) ??
+        user?.branchId;
     if (fromBranchId == null) return;
     if (_toBranchId == null) return;
     if (_qtyByMedicine.isEmpty) return;

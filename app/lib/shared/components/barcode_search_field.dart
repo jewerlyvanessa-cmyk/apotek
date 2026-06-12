@@ -39,6 +39,8 @@ class BarcodeSearchField extends StatelessWidget {
     this.onSubmitted,
     this.onChanged,
     this.showClearButton = true,
+    this.showContinuousScan = false,
+    this.continuousScanTitle,
   });
 
   final TextEditingController controller;
@@ -50,6 +52,9 @@ class BarcodeSearchField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final bool showClearButton;
+  /// Tombol scan berkelanjutan (multi barcode tanpa tutup kamera).
+  final bool showContinuousScan;
+  final String? continuousScanTitle;
 
   Future<void> _scan(BuildContext context) async {
     final code = await openBarcodeScanner(context);
@@ -58,6 +63,14 @@ class BarcodeSearchField extends StatelessWidget {
     controller.text = barcode;
     onChanged?.call(barcode);
     await onBarcode(barcode);
+  }
+
+  Future<void> _scanContinuous(BuildContext context) async {
+    await openContinuousBarcodeScanner(
+      context,
+      title: continuousScanTitle,
+      onBarcode: onBarcode,
+    );
   }
 
   @override
@@ -74,22 +87,35 @@ class BarcodeSearchField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hintText,
             labelText: labelText,
-            helperText: 'Scanner USB/HID: arahkan ke field lalu scan (Enter otomatis)',
+            helperText: showContinuousScan
+                ? 'USB/HID: scan cepat di field ini, atau pakai tombol multi-scan'
+                : 'Scanner USB/HID: arahkan ke field lalu scan (Enter otomatis)',
             helperMaxLines: 2,
             prefixIcon: const Icon(Icons.search),
             isDense: isDense,
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (showContinuousScan)
+                  Semantics(
+                    label: 'Scan berkelanjutan',
+                    button: true,
+                    child: IconButton(
+                      tooltip: 'Scan berkelanjutan (multi barcode)',
+                      icon: const Icon(Icons.document_scanner_outlined),
+                      color: AppColors.primary,
+                      onPressed: () => _scanContinuous(context),
+                    ),
+                  ),
                 Semantics(
                   label: 'Scan barcode kamera',
                   button: true,
                   child: IconButton(
-                  tooltip: 'Scan barcode',
-                  icon: const Icon(Icons.qr_code_scanner),
-                  color: AppColors.primary,
-                  onPressed: () => _scan(context),
-                ),
+                    tooltip: 'Scan barcode',
+                    icon: const Icon(Icons.qr_code_scanner),
+                    color: AppColors.primary,
+                    onPressed: () => _scan(context),
+                  ),
                 ),
                 if (showClearButton && value.text.isNotEmpty)
                   IconButton(

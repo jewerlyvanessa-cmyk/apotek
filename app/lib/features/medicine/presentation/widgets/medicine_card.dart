@@ -3,6 +3,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../shared/utils/currency_formatter.dart';
 import '../../domain/entities/medicine.dart';
+import 'drug_classification_chip.dart';
 import 'product_type_chip.dart';
 
 class MedicineCard extends StatelessWidget {
@@ -54,8 +55,26 @@ class MedicineCard extends StatelessWidget {
                           label: medicine.productTypeName,
                           compact: true,
                         ),
+                        if (medicine.displayDrugClassification != null) ...[
+                          const SizedBox(width: 4),
+                          DrugClassificationChip(
+                            classification: medicine.displayDrugClassification!,
+                            compact: true,
+                          ),
+                        ],
                       ],
                     ),
+                    if (medicine.composition != null &&
+                        medicine.composition!.isNotEmpty)
+                      Text(
+                        medicine.composition!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     if (medicine.barcode != null)
                       Text(
                         medicine.barcode!,
@@ -92,11 +111,6 @@ class MedicineCard extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  if (medicine.requiresPrescription)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Icon(Icons.description, size: 16, color: AppColors.warning),
-                    ),
                 ],
               ),
             ],

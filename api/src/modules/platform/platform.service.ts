@@ -21,6 +21,7 @@ import {
   resolveTenantSubscriptionPlan,
 } from '../license/license-plans';
 import { LicenseType } from '../license/license.types';
+import { ensureDefaultMedicineUnits } from '../../common/utils/medicine-unit-defaults.util';
 import { ensureDefaultProductTypes } from '../../common/utils/product-type-defaults.util';
 
 @Injectable()
@@ -110,6 +111,7 @@ export class PlatformService {
       customers,
       suppliers,
       categories,
+      medicineUnits,
       productTypes,
       medicines,
       stocks,
@@ -128,6 +130,7 @@ export class PlatformService {
       this.prisma.customer.count({ where }),
       this.prisma.supplier.count({ where }),
       this.prisma.medicineCategory.count({ where }),
+      this.prisma.medicineUnit.count({ where }),
       this.prisma.productTypeDefinition.count({ where }),
       this.prisma.medicine.count({ where }),
       this.prisma.stock.count({ where }),
@@ -147,6 +150,7 @@ export class PlatformService {
       customers,
       suppliers,
       categories,
+      medicineUnits,
       productTypes,
       medicines,
       stocks,
@@ -172,6 +176,7 @@ export class PlatformService {
     };
     if (opts.catalogOnly) {
       push(counts.categories, 'kategori');
+      push(counts.medicineUnits, 'satuan');
       push(counts.productTypes, 'tipe produk');
       return blockers;
     }
@@ -181,6 +186,7 @@ export class PlatformService {
     push(counts.suppliers, 'supplier');
     if (opts.includeCatalog) {
       push(counts.categories, 'kategori');
+      push(counts.medicineUnits, 'satuan');
       push(counts.productTypes, 'tipe produk');
     }
     push(counts.medicines, 'obat');
@@ -210,6 +216,7 @@ export class PlatformService {
       await tx.customer.deleteMany({ where: { tenantId } });
       await tx.supplier.deleteMany({ where: { tenantId } });
       await tx.medicineCategory.deleteMany({ where: { tenantId } });
+      await tx.medicineUnit.deleteMany({ where: { tenantId } });
       await tx.productTypeDefinition.deleteMany({ where: { tenantId } });
       await tx.tenant.delete({ where: { id: tenantId } });
     });
@@ -244,6 +251,7 @@ export class PlatformService {
       });
 
       await ensureDefaultProductTypes(tx, tenant.id);
+      await ensureDefaultMedicineUnits(tx, tenant.id);
 
       let centralBranch: { id: string; name: string; code: string | null } | null =
         null;
@@ -286,6 +294,7 @@ export class PlatformService {
             passwordHash,
             role: UserRole.OWNER,
             roles: [UserRole.OWNER],
+            globalRoles: [UserRole.OWNER],
           },
           select: { id: true, email: true, fullName: true, role: true },
         });
@@ -323,6 +332,7 @@ export class PlatformService {
         passwordHash,
         role: UserRole.OWNER,
         roles: [UserRole.OWNER],
+        globalRoles: [UserRole.OWNER],
         mustChangePassword: true,
       },
       select: {

@@ -316,10 +316,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
         GoRoute(
-          path: '/medicines',
-          builder: (context, state) => const MedicineListPage(),
-        ),
-        GoRoute(
           path: '/backup',
           builder: (context, state) => const ManagerBackupPage(),
         ),
@@ -328,6 +324,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         GoRoute(
           path: '/license-status',
           builder: (context, state) => const TenantLicenseStatusPage(),
+        ),
+      if (has('OWNER') || has('MANAGER') || has('WAREHOUSE'))
+        GoRoute(
+          path: '/medicines',
+          builder: (context, state) => const MedicineListPage(),
+          routes: [
+            GoRoute(
+              path: 'new',
+              builder: (context, state) => const MedicineFormPage(),
+            ),
+            GoRoute(
+              path: ':id/edit',
+              builder: (context, state) => MedicineFormPage(
+                medicineId: state.pathParameters['id'],
+              ),
+            ),
+            GoRoute(
+              path: 'master',
+              builder: (context, state) => const CatalogMasterPage(),
+            ),
+          ],
         ),
       if (has('OWNER') || has('MANAGER') || has('WAREHOUSE'))
         GoRoute(
@@ -388,22 +405,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/stocks',
           builder: (context, state) => const StockListPage(),
         ),
-      if (role != 'SUPER_ADMIN' &&
-          (has('OWNER') || has('MANAGER') || has('WAREHOUSE')))
-        GoRoute(
-          path: '/medicines/master',
-          builder: (context, state) => const CatalogMasterPage(),
-        ),
-      GoRoute(
-        path: '/medicines/new',
-        builder: (context, state) => const MedicineFormPage(),
-      ),
-      GoRoute(
-        path: '/medicines/:id/edit',
-        builder: (context, state) => MedicineFormPage(
-          medicineId: state.pathParameters['id'],
-        ),
-      ),
       if (role != 'SUPER_ADMIN' && role != 'CASHIER' && role != null)
         GoRoute(
           path: '/alerts/expired',

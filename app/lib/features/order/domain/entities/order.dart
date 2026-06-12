@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/constants/drug_classification.dart';
 import '../../../../core/constants/product_type.dart';
 import 'prescription_info.dart';
 
@@ -101,6 +102,7 @@ class OrderLineItem extends Equatable {
     this.unit,
     this.usageInstructions,
     this.productType = ProductType.drug,
+    this.drugClassification,
     this.requiresPrescription = false,
   });
 
@@ -112,10 +114,18 @@ class OrderLineItem extends Equatable {
   final String? unit;
   final String? usageInstructions;
   final ProductType productType;
+  final DrugClassification? drugClassification;
   final bool requiresPrescription;
+
+  DrugClassification? get displayDrugClassification =>
+      drugClassification ??
+      (requiresPrescription ? DrugClassification.prescription : null);
 
   factory OrderLineItem.fromJson(Map<String, dynamic> json) {
     final med = json['medicine'] as Map<String, dynamic>?;
+    final requiresRx = med?['requiresPrescription'] as bool? ??
+        med?['requires_prescription'] as bool? ??
+        false;
     return OrderLineItem(
       medicineId: json['medicineId'] as String? ?? json['medicine_id'] as String,
       medicineName: med?['name'] as String? ?? '',
@@ -125,9 +135,11 @@ class OrderLineItem extends Equatable {
       unit: med?['unit'] as String?,
       usageInstructions: json['notes'] as String?,
       productType: _parseProductType(med),
-      requiresPrescription: med?['requiresPrescription'] as bool? ??
-          med?['requires_prescription'] as bool? ??
-          false,
+      drugClassification: DrugClassification.fromApi(
+        med?['drugClassification'] as String? ??
+            med?['drug_classification'] as String?,
+      ),
+      requiresPrescription: requiresRx,
     );
   }
 
@@ -145,6 +157,7 @@ class CartItem extends Equatable {
     this.unit,
     this.rackPosition,
     this.productType = ProductType.drug,
+    this.drugClassification,
     this.requiresPrescription = false,
     this.usageInstructions,
   });
@@ -157,16 +170,22 @@ class CartItem extends Equatable {
   final String? unit;
   final String? rackPosition;
   final ProductType productType;
+  final DrugClassification? drugClassification;
   final bool requiresPrescription;
   final String? usageInstructions;
 
   double get subtotal => sellPrice * quantity;
+
+  DrugClassification? get displayDrugClassification =>
+      drugClassification ??
+      (requiresPrescription ? DrugClassification.prescription : null);
 
   CartItem copyWith({
     int? quantity,
     int? availableStock,
     String? rackPosition,
     ProductType? productType,
+    DrugClassification? drugClassification,
     bool? requiresPrescription,
     String? usageInstructions,
   }) {
@@ -179,6 +198,7 @@ class CartItem extends Equatable {
       unit: unit,
       rackPosition: rackPosition ?? this.rackPosition,
       productType: productType ?? this.productType,
+      drugClassification: drugClassification ?? this.drugClassification,
       requiresPrescription:
           requiresPrescription ?? this.requiresPrescription,
       usageInstructions: usageInstructions ?? this.usageInstructions,

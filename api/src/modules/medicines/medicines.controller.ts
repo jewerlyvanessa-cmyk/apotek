@@ -61,12 +61,7 @@ export class MedicinesController {
     return ApiResponseDto.ok(data);
   }
 
-  @Roles(
-    UserRole.OWNER,
-    UserRole.MANAGER,
-    UserRole.WAREHOUSE,
-    UserRole.STAFF,
-  )
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.WAREHOUSE)
   @Post()
   async create(
     @CurrentUser() user: JwtPayloadUser,

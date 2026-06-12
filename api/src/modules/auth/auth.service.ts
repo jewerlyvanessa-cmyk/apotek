@@ -319,36 +319,46 @@ export class AuthService {
     user: UserWithRelations,
     requested?: UserRole,
   ): Promise<UserWithRelations> {
-    const assignments = this.branchAssignments(user);
+    let sessionUser = user;
+
+    const isOwner =
+      sessionUser.role === UserRole.OWNER ||
+      sessionUser.roles?.includes(UserRole.OWNER);
+    if (isOwner && !(sessionUser.globalRoles ?? []).includes(UserRole.OWNER)) {
+      sessionUser = await this.prisma.user.update({
+        where: { id: sessionUser.id },
+        data: {
+          globalRoles: [UserRole.OWNER],
+          branchId:
+            sessionUser.userBranches.length > 0 ? sessionUser.branchId : null,
+        },
+        include: userRelationsInclude,
+      });
+    }
+
+    const assignments = this.branchAssignments(sessionUser);
     const contextRoles = resolveSessionRoles(
-      user,
+      sessionUser,
       assignments,
-      user.branchId,
+      sessionUser.branchId,
     );
     if (!contextRoles.length) {
       throw new BadRequestException('Akun tidak memiliki peran yang valid');
     }
 
-    const roles = normalizeUserRoles(contextRoles, user.role);
-    const activeRole = resolveActiveRole(roles, requested, user.role);
+    const roles = normalizeUserRoles(contextRoles, sessionUser.role);
+    const activeRole = resolveActiveRole(roles, requested, sessionUser.role);
 
-    try {
-      assertRoleAllowedInContext(
-        activeRole,
-        user.branchId,
-        user.globalRoles ?? [],
-        assignments,
-      );
-    } catch {
+    if (!roles.includes(activeRole)) {
       throw new BadRequestException('Peran tidak sesuai cabang aktif');
     }
 
-    const needsUpdate = activeRole !== user.role;
+    const needsRoleUpdate = activeRole !== sessionUser.role;
 
-    if (!needsUpdate) return user;
+    if (!needsRoleUpdate) return sessionUser;
 
     return this.prisma.user.update({
-      where: { id: user.id },
+      where: { id: sessionUser.id },
       data: { role: activeRole },
       include: userRelationsInclude,
     });

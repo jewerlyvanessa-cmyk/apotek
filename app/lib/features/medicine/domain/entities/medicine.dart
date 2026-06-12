@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/constants/drug_classification.dart';
 import '../../../../core/constants/product_type.dart';
 
 class Medicine extends Equatable {
@@ -9,6 +10,7 @@ class Medicine extends Equatable {
     required this.sellPrice,
     required this.unit,
     required this.minStock,
+    this.composition,
     this.barcode,
     this.sku,
     this.imageUrl,
@@ -20,12 +22,14 @@ class Medicine extends Equatable {
     this.productTypeCode,
     this.productTypeName,
     this.productTypeAllowsPrescription = false,
+    this.drugClassification,
     this.requiresPrescription = false,
     this.isActive = true,
   });
 
   final String id;
   final String name;
+  final String? composition;
   final String? barcode;
   final String? sku;
   final String? imageUrl;
@@ -41,12 +45,17 @@ class Medicine extends Equatable {
   final String? productTypeCode;
   final String? productTypeName;
   final bool productTypeAllowsPrescription;
+  final DrugClassification? drugClassification;
   final bool requiresPrescription;
   final bool isActive;
 
   ProductType get productType => ProductType.fromApi(productTypeCode);
 
   String get productTypeLabel => productTypeName ?? productType.label;
+
+  DrugClassification? get displayDrugClassification =>
+      drugClassification ??
+      (requiresPrescription ? DrugClassification.prescription : null);
 
   factory Medicine.fromJson(Map<String, dynamic> json) {
     final pt = json['productType'] ?? json['product_type'];
@@ -74,6 +83,8 @@ class Medicine extends Equatable {
     return Medicine(
       id: json['id'] as String,
       name: json['name'] as String,
+      composition:
+          json['composition'] as String? ?? json['kandungan_sediaan'] as String?,
       barcode: json['barcode'] as String?,
       sku: json['sku'] as String?,
       imageUrl: json['imageUrl'] as String? ?? json['image_url'] as String?,
@@ -89,6 +100,10 @@ class Medicine extends Equatable {
       productTypeCode: typeCode,
       productTypeName: typeName,
       productTypeAllowsPrescription: typeAllowsRx,
+      drugClassification: DrugClassification.fromApi(
+        json['drugClassification'] as String? ??
+            json['drug_classification'] as String?,
+      ),
       requiresPrescription: json['requiresPrescription'] as bool? ??
           json['requires_prescription'] as bool? ??
           false,

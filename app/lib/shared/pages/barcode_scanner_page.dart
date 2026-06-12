@@ -32,12 +32,12 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   );
 
   bool _closed = false;
-  bool _processing = false;
   final Map<String, DateTime> _lastAcceptedAt = {};
   final List<String> _recentScans = [];
   int _sessionScanCount = 0;
+  int _pendingLookups = 0;
 
-  static const _sameCodeCooldown = Duration(milliseconds: 450);
+  static const _sameCodeCooldown = Duration(milliseconds: 350);
 
   @override
   void dispose() {
@@ -55,8 +55,29 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     return true;
   }
 
+  void _trackAcceptedScan(String value) {
+    if (!mounted) return;
+    setState(() {
+      _sessionScanCount++;
+      _recentScans.insert(0, value);
+      if (_recentScans.length > 12) _recentScans.removeLast();
+    });
+  }
+
+  Future<void> _dispatchContinuousScan(String value) async {
+    _trackAcceptedScan(value);
+    setState(() => _pendingLookups++);
+    try {
+      await widget.onBarcodeScanned?.call(value);
+    } finally {
+      if (mounted) {
+        setState(() => _pendingLookups = (_pendingLookups - 1).clamp(0, 999));
+      }
+    }
+  }
+
   Future<void> _handleDetect(BarcodeCapture capture) async {
-    if (_closed || _processing) return;
+    if (_closed) return;
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
 
@@ -75,19 +96,8 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       return;
     }
 
-    setState(() => _processing = true);
-    try {
-      for (final value in accepted) {
-        await widget.onBarcodeScanned?.call(value);
-        if (!mounted) return;
-        setState(() {
-          _sessionScanCount++;
-          _recentScans.insert(0, value);
-          if (_recentScans.length > 8) _recentScans.removeLast();
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _processing = false);
+    for (final value in accepted) {
+      _dispatchContinuousScan(value);
     }
   }
 
@@ -130,12 +140,15 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
             controller: _controller,
             onDetect: _handleDetect,
           ),
-          if (_processing)
-            const Align(
+          if (_pendingLookups > 0)
+            Align(
               alignment: Alignment.topCenter,
               child: Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: LinearProgressIndicator(minHeight: 3),
+                padding: const EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  value: _pendingLookups > 3 ? null : 1 / _pendingLookups,
+                ),
               ),
             ),
           Align(
@@ -154,7 +167,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                 children: [
                   Text(
                     widget.continuous
-                        ? 'Scan satu per satu. Barcode sama bisa discan ulang untuk menambah qty.'
+                        ? 'Scan berkelanjutan — beberapa barcode/QR sekaligus. Scan ulang = +1 qty.'
                         : 'Arahkan kamera ke barcode obat',
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),

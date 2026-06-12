@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/drug_classification.dart';
 import '../../../../core/constants/product_type.dart';
 import '../../domain/entities/order.dart';
 
@@ -13,6 +14,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     String? unit,
     String? rackPosition,
     ProductType productType = ProductType.drug,
+    DrugClassification? drugClassification,
     bool requiresPrescription = false,
   }) {
     final idx = state.indexWhere((i) => i.medicineId == medicineId);
@@ -30,6 +32,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
               availableStock: maxStock,
               rackPosition: rackPosition ?? item.rackPosition,
               productType: productType,
+              drugClassification: drugClassification ?? item.drugClassification,
               requiresPrescription:
                   requiresPrescription || item.requiresPrescription,
             )
@@ -48,6 +51,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
           unit: unit,
           rackPosition: rackPosition,
           productType: productType,
+          drugClassification: drugClassification,
           requiresPrescription: requiresPrescription,
         ),
       ];

@@ -153,6 +153,31 @@ List<Map<String, dynamic>> filterActiveBranches(
 ) =>
     branches.where(isBranchActive).toList();
 
+/// Cabang aktif tenant (untuk visibilitas menu gudang multi-cabang).
+final tenantActiveBranchesProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  return filterActiveBranches(
+    await ref.watch(adminRepositoryProvider).listBranches(),
+  );
+});
+
+final tenantActiveBranchCountProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+  final branches = await ref.watch(tenantActiveBranchesProvider.future);
+  return branches.length;
+});
+
+bool showMultiBranchWarehouseMenus(int activeBranchCount) =>
+    activeBranchCount > 1;
+
+/// Menu rantai pasok multi-cabang — disembunyikan jika tenant hanya 1 cabang.
+const multiBranchWarehouseMenuPaths = {
+  '/stocks/central',
+  '/distributions',
+  '/warehouse/transfer',
+  '/procurements',
+};
+
 /// Map branchId → stock_mode dari cabang aktif.
 final branchStockModesProvider =
     FutureProvider.autoDispose<Map<String, String>>((ref) async {

@@ -9,6 +9,7 @@ import '../../../../shared/layouts/app_scaffold.dart';
 import '../../data/catalog_repository.dart';
 import '../../domain/entities/catalog_entities.dart';
 import '../providers/catalog_provider.dart';
+import '../widgets/catalog_form_dialogs.dart';
 
 class CatalogMasterPage extends ConsumerStatefulWidget {
   const CatalogMasterPage({super.key});
@@ -24,7 +25,7 @@ class _CatalogMasterPageState extends ConsumerState<CatalogMasterPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -36,6 +37,7 @@ class _CatalogMasterPageState extends ConsumerState<CatalogMasterPage>
   void _refreshAll() {
     ref.invalidate(productTypesProvider);
     ref.invalidate(categoriesProvider);
+    ref.invalidate(unitsProvider);
     ref.invalidate(suppliersProvider);
   }
 
@@ -97,6 +99,7 @@ class _CatalogMasterPageState extends ConsumerState<CatalogMasterPage>
             tabs: const [
               Tab(text: 'Tipe Produk'),
               Tab(text: 'Kategori'),
+              Tab(text: 'Satuan'),
               Tab(text: 'Supplier'),
             ],
           ),
@@ -109,6 +112,10 @@ class _CatalogMasterPageState extends ConsumerState<CatalogMasterPage>
                   onDelete: _confirmDelete,
                 ),
                 _CategoriesTab(
+                  onRefresh: _refreshAll,
+                  onDelete: _confirmDelete,
+                ),
+                _UnitsTab(
                   onRefresh: _refreshAll,
                   onDelete: _confirmDelete,
                 ),
@@ -319,56 +326,8 @@ class _CategoriesTab extends ConsumerWidget {
     WidgetRef ref, {
     MedicineCategory? existing,
   }) async {
-    final nameCtrl = TextEditingController(text: existing?.name ?? '');
-    final isEdit = existing != null;
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Edit Kategori' : 'Tambah Kategori'),
-        content: AppTextField(controller: nameCtrl, label: 'Nama kategori'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(isEdit ? 'Simpan' : 'Tambah'),
-          ),
-        ],
-      ),
-    );
-
-    if (saved != true) return;
-
-    final repo = ref.read(catalogRepositoryProvider);
-    final name = nameCtrl.text.trim();
-    try {
-      if (isEdit) {
-        await repo.updateCategory(existing.id, name);
-      } else {
-        await repo.createCategory(name);
-      }
-      onRefresh();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEdit ? 'Kategori diperbarui' : 'Kategori ditambahkan'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    }
+    final id = await showCategoryFormDialog(context, ref, existing: existing);
+    if (id != null) onRefresh();
   }
 
   @override
@@ -432,6 +391,89 @@ class _CategoriesTab extends ConsumerWidget {
   }
 }
 
+class _UnitsTab extends ConsumerWidget {
+  const _UnitsTab({
+    required this.onRefresh,
+    required this.onDelete,
+  });
+
+  final VoidCallback onRefresh;
+  final Future<void> Function({
+    required String title,
+    required String message,
+    required Future<void> Function() onConfirm,
+  }) onDelete;
+
+  Future<void> _showForm(
+    BuildContext context,
+    WidgetRef ref, {
+    MedicineUnit? existing,
+  }) async {
+    final name = await showUnitFormDialog(context, ref, existing: existing);
+    if (name != null) onRefresh();
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unitsAsync = ref.watch(unitsProvider);
+
+    return unitsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (items) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: AppButton(
+              label: 'Tambah Satuan',
+              onPressed: () => _showForm(context, ref),
+            ),
+          ),
+          Expanded(
+            child: items.isEmpty
+                ? const Center(child: Text('Belum ada satuan'))
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    itemCount: items.length,
+                    separatorBuilder: (_, unused) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return ListTile(
+                        title: Text(item.name),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: () => _showForm(
+                                context,
+                                ref,
+                                existing: item,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => onDelete(
+                                title: 'Hapus satuan',
+                                message:
+                                    'Hapus "${item.name}"? Tidak bisa jika masih dipakai produk.',
+                                onConfirm: () => ref
+                                    .read(catalogRepositoryProvider)
+                                    .deleteUnit(item.id),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SuppliersTab extends ConsumerWidget {
   const _SuppliersTab({
     required this.onRefresh,
@@ -450,78 +492,8 @@ class _SuppliersTab extends ConsumerWidget {
     WidgetRef ref, {
     Supplier? existing,
   }) async {
-    final nameCtrl = TextEditingController(text: existing?.name ?? '');
-    final phoneCtrl = TextEditingController(text: existing?.phone ?? '');
-    final emailCtrl = TextEditingController(text: existing?.email ?? '');
-    final addressCtrl = TextEditingController(text: existing?.address ?? '');
-    final isEdit = existing != null;
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Edit Supplier' : 'Tambah Supplier'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppTextField(controller: nameCtrl, label: 'Nama supplier'),
-              const SizedBox(height: AppSpacing.sm),
-              AppTextField(controller: phoneCtrl, label: 'Telepon'),
-              const SizedBox(height: AppSpacing.sm),
-              AppTextField(controller: emailCtrl, label: 'Email'),
-              const SizedBox(height: AppSpacing.sm),
-              AppTextField(controller: addressCtrl, label: 'Alamat'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(isEdit ? 'Simpan' : 'Tambah'),
-          ),
-        ],
-      ),
-    );
-
-    if (saved != true) return;
-
-    final repo = ref.read(catalogRepositoryProvider);
-    final payload = <String, dynamic>{
-      'name': nameCtrl.text.trim(),
-      if (phoneCtrl.text.trim().isNotEmpty) 'phone': phoneCtrl.text.trim(),
-      if (emailCtrl.text.trim().isNotEmpty) 'email': emailCtrl.text.trim(),
-      if (addressCtrl.text.trim().isNotEmpty) 'address': addressCtrl.text.trim(),
-    };
-
-    try {
-      if (isEdit) {
-        await repo.updateSupplier(existing.id, payload);
-      } else {
-        await repo.createSupplier(payload);
-      }
-      onRefresh();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEdit ? 'Supplier diperbarui' : 'Supplier ditambahkan'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    }
+    final id = await showSupplierFormDialog(context, ref, existing: existing);
+    if (id != null) onRefresh();
   }
 
   @override

@@ -9,6 +9,7 @@ List<QuickMenuItem> homeQuickMenuItems(
   BuildContext context,
   AuthUser user, {
   bool showWarehouseEtalaseMenus = false,
+  bool showMultiBranchMenus = true,
 }) {
   final items = switch (user.role) {
     'OWNER' => _ownerMenus(context),
@@ -27,6 +28,11 @@ List<QuickMenuItem> homeQuickMenuItems(
         (item) =>
             showWarehouseEtalaseMenus ||
             !warehouseEtalaseMenuPaths.contains(item.path),
+      )
+      .where(
+        (item) =>
+            showMultiBranchMenus ||
+            !multiBranchWarehouseMenuPaths.contains(item.path),
       )
       .map(
         (item) => QuickMenuItem(
@@ -398,6 +404,12 @@ List<_DashboardMenuEntry> _warehouseMenus(
         icon: Icons.call_split,
         title: 'Distribusi',
         onTap: () => context.go('/distributions'),
+      ),
+      _DashboardMenuEntry(
+        path: '/medicines',
+        icon: Icons.medication_outlined,
+        title: 'Katalog Produk',
+        onTap: () => context.go('/medicines'),
       ),
     ];
 

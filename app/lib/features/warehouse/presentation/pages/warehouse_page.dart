@@ -8,6 +8,7 @@ import '../../../../shared/widgets/app_icon_3d.dart';
 import '../../../../shared/widgets/app_nav_list_tile.dart';
 import '../../../admin/data/admin_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../inventory/presentation/providers/stock_provider.dart';
 import '../providers/warehouse_branch_provider.dart';
 import 'opname_page.dart';
 import 'transfer_page.dart';
@@ -24,7 +25,11 @@ class WarehousePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final needsPicker = ref.watch(warehouseNeedsBranchPickerProvider);
-    final branchId = ref.watch(warehouseBranchIdProvider);
+    final branchId = ref.watch(effectiveWarehouseBranchIdProvider);
+    final showMultiBranch = ref.watch(tenantActiveBranchCountProvider).maybeWhen(
+          data: (count) => showMultiBranchWarehouseMenus(count),
+          orElse: () => true,
+        );
 
     if (user == null) {
       return const AppScaffold(
@@ -33,7 +38,14 @@ class WarehousePage extends ConsumerWidget {
       );
     }
 
-    if (!needsPicker && user.branchId == null) {
+    if (!needsPicker && branchId == null && user.branchId == null) {
+      final branchesAsync = ref.watch(tenantActiveBranchesProvider);
+      if (branchesAsync.isLoading) {
+        return const AppScaffold(
+          title: 'Gudang',
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
       return const AppScaffold(
         title: 'Gudang',
         body: Center(child: Text('Login dengan akun yang terikat cabang')),
@@ -109,7 +121,7 @@ class WarehousePage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          if (isTenantWide) ...[
+          if (isTenantWide && showMultiBranch) ...[
             AppNavListTile(
               icon: Icons.local_shipping_outlined,
               title: 'Pengadaan Gudang Pusat',
@@ -117,8 +129,6 @@ class WarehousePage extends ConsumerWidget {
               onTap: () => context.push('/procurements'),
             ),
             const SizedBox(height: AppSpacing.md),
-          ],
-          if (isTenantWide) ...[
             AppNavListTile(
               icon: Icons.call_split,
               title: 'Distribusi ke Cabang',
@@ -134,7 +144,9 @@ class WarehousePage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
           ],
-          if (!isTenantWide && (user.isBranchManager || isWarehouse)) ...[
+          if (showMultiBranch &&
+              !isTenantWide &&
+              (user.isBranchManager || isWarehouse)) ...[
             AppNavListTile(
               icon: Icons.call_split,
               title: 'Terima Distribusi',
@@ -178,13 +190,15 @@ class WarehousePage extends ConsumerWidget {
             subtitle: 'Input stok aktual lalu submit',
             child: OpnamePage(),
           ),
-          const SizedBox(height: AppSpacing.md),
-          const _MenuCard(
-            icon: Icons.swap_horiz,
-            title: 'Transfer Stok',
-            subtitle: 'Pindah stok antar cabang',
-            child: TransferPage(),
-          ),
+          if (showMultiBranch) ...[
+            const SizedBox(height: AppSpacing.md),
+            const _MenuCard(
+              icon: Icons.swap_horiz,
+              title: 'Transfer Stok',
+              subtitle: 'Pindah stok antar cabang',
+              child: TransferPage(),
+            ),
+          ],
         ],
       ),
     );
