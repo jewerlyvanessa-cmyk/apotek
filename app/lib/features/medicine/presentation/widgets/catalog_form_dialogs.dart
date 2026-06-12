@@ -48,7 +48,7 @@ Future<String?> showCategoryFormDialog(
     } else {
       result = await repo.createCategory(name);
     }
-    ref.invalidate(categoriesProvider);
+    Future.microtask(() => ref.invalidate(categoriesProvider));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -123,7 +123,7 @@ Future<String?> showUnitFormDialog(
     } else {
       result = await repo.createUnit(name);
     }
-    ref.invalidate(unitsProvider);
+    Future.microtask(() => ref.invalidate(unitsProvider));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -209,7 +209,7 @@ Future<String?> showSupplierFormDialog(
     } else {
       result = await repo.createSupplier(payload);
     }
-    ref.invalidate(suppliersProvider);
+    Future.microtask(() => ref.invalidate(suppliersProvider));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

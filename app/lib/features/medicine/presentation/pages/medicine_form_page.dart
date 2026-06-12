@@ -15,7 +15,6 @@ import '../../data/medicine_repository.dart';
 import '../../domain/entities/catalog_entities.dart';
 import '../../../../core/constants/drug_classification.dart';
 import '../../domain/entities/medicine.dart';
-import '../widgets/drug_classification_chip.dart';
 import '../../../inventory/presentation/providers/stock_provider.dart';
 import '../providers/medicine_list_query.dart';
 import '../providers/medicine_provider.dart';
@@ -99,7 +98,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
   }
 
   void _applyMedicine(Medicine m) {
-    _loadedMedicineId = m.id;
     _nameController.text = m.name;
     _compositionController.text = m.composition ?? '';
     _barcodeController.text = m.barcode ?? '';
@@ -113,6 +111,14 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
     _productTypeId = m.productTypeId;
     _drugClassification = m.drugClassification ??
         (m.requiresPrescription ? DrugClassification.prescription : null);
+    _loadedMedicineId = m.id;
+  }
+
+  void _setDefaultProductType(List<ProductTypeDef> types) {
+    if (widget.isEdit || _productTypeId != null) return;
+    final active = types.where((t) => t.isActive).toList();
+    if (active.isEmpty) return;
+    setState(() => _productTypeId = active.first.id);
   }
 
   Future<void> _pickImage() async {
@@ -200,8 +206,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
         await repo.uploadImage(medicineId: saved.id, file: _pickedImage!);
       }
 
-      ref.invalidate(medicineListProvider(const MedicineListQuery()));
-      ref.invalidate(stockListProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -212,6 +216,10 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
           ),
         );
         context.pop();
+        Future.microtask(() {
+          ref.invalidate(medicineListProvider(const MedicineListQuery()));
+          ref.invalidate(stockListProvider);
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -237,8 +245,12 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
     final unitsAsync = ref.watch(unitsProvider);
     final productTypesAsync = ref.watch(productTypesProvider);
 
+    productTypesAsync.whenData(_setDefaultProductType);
+
     if (widget.isEdit) {
-      final detailAsync = ref.watch(medicineDetailProvider(widget.medicineId!));
+      final medicineId = widget.medicineId!;
+      final detailAsync = ref.watch(medicineDetailProvider(medicineId));
+
       return detailAsync.when(
         loading: () => const AppScaffold(
           title: 'Edit Produk',
@@ -250,12 +262,14 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
         ),
         data: (medicine) {
           if (_loadedMedicineId != medicine.id) {
-            _applyMedicine(medicine);
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _loadedMedicineId == medicine.id) {
-                setState(() {});
-              }
+              if (!mounted || _loadedMedicineId == medicine.id) return;
+              setState(() => _applyMedicine(medicine));
             });
+            return const AppScaffold(
+              title: 'Edit Produk',
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           return _buildForm(
             categoriesAsync,
@@ -299,7 +313,11 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Form(
           key: _formKey,
-          child: Column(
+          child: KeyedSubtree(
+            key: ValueKey(
+              'medicine-fields-${_loadedMedicineId ?? 'new'}-$_productTypeId',
+            ),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Card(
@@ -357,13 +375,7 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                 error: (error, stack) => const SizedBox.shrink(),
                 data: (types) {
                   final active = types.where((t) => t.isActive).toList();
-                  if (!widget.isEdit &&
-                      _productTypeId == null &&
-                      active.isNotEmpty) {
-                    _productTypeId = active.first.id;
-                  }
                   return DropdownButtonFormField<String>(
-                    key: ValueKey('ptype-${_loadedMedicineId ?? 'new'}'),
                     initialValue: _productTypeId,
                     decoration: const InputDecoration(labelText: 'Tipe produk'),
                     items: active
@@ -429,7 +441,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        key: ValueKey('cat-${_loadedMedicineId ?? 'new'}'),
                         initialValue: _categoryId,
                         decoration: const InputDecoration(labelText: 'Kategori'),
                         items: [
@@ -470,7 +481,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        key: ValueKey('sup-${_loadedMedicineId ?? 'new'}'),
                         initialValue: _supplierId,
                         decoration: const InputDecoration(labelText: 'Supplier'),
                         items: [
@@ -517,7 +527,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          key: ValueKey('unit-${_loadedMedicineId ?? 'new'}'),
                           initialValue: _unit,
                           decoration: const InputDecoration(labelText: 'Satuan'),
                           items: unitNames
@@ -644,7 +653,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
               if (selectedTypeAllowsRx) ...[
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<DrugClassification?>(
-                  key: ValueKey('drug-${_loadedMedicineId ?? 'new'}'),
                   initialValue: _drugClassification,
                   decoration: const InputDecoration(
                     labelText: 'Golongan obat',
@@ -676,20 +684,6 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                       ),
                     ),
                   ],
-                  selectedItemBuilder: (context) => [
-                    const Text('— Pilih —'),
-                    ...DrugClassification.catalogOptions.map(
-                      (c) => Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          DrugClassificationChip(
-                            classification: c,
-                            compact: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   onChanged: (v) => setState(() => _drugClassification = v),
                   validator: (v) =>
                       selectedTypeAllowsRx && v == null
@@ -704,6 +698,7 @@ class _MedicineFormPageState extends ConsumerState<MedicineFormPage> {
                 onPressed: _submit,
               ),
             ],
+            ),
           ),
         ),
       ),
