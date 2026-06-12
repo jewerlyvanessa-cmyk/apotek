@@ -35,6 +35,8 @@ dependencies:
   firebase_core: ^3.13.0
   firebase_messaging: ^15.2.5
   flutter_local_notifications: ^18.0.1
+  esc_pos_bluetooth: ^0.4.1
+  flutter_bluetooth_basic: ^0.1.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

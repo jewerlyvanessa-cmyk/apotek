@@ -268,8 +268,7 @@ class _CashierPayPageState extends ConsumerState<CashierPayPage> {
         final user = ref.read(authProvider).user;
         try {
           await ref.read(thermalPrinterServiceProvider).printReceipt(
-                host: settings.host,
-                port: settings.port,
+                settings: settings,
                 appName: cfg.appName,
                 branchName: user?.branchName,
                 order: order,

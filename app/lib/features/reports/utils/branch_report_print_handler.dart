@@ -68,8 +68,7 @@ Future<void> printBranchReport({
     final prefs = ref.read(prefsProvider);
     final settings = await ThermalPrinterSettings.load(prefs);
     await ref.read(thermalPrinterServiceProvider).printBranchSummary(
-          host: settings.host,
-          port: settings.port,
+          settings: settings,
           data: data,
         );
   } else {

@@ -160,7 +160,7 @@ class _CashierBranchReportPageState extends ConsumerState<CashierBranchReportPag
             ListTile(
               leading: const Icon(Icons.receipt_long_outlined),
               title: const Text('Cetak thermal'),
-              subtitle: const Text('Printer struk jaringan (ESC/POS)'),
+              subtitle: const Text('Printer struk WiFi atau Bluetooth'),
               onTap: () => Navigator.pop(ctx, 'thermal'),
             ),
           ],
@@ -186,8 +186,7 @@ class _CashierBranchReportPageState extends ConsumerState<CashierBranchReportPag
         final prefs = ref.read(prefsProvider);
         final settings = await ThermalPrinterSettings.load(prefs);
         await ref.read(thermalPrinterServiceProvider).printCashierReport(
-              host: settings.host,
-              port: settings.port,
+              settings: settings,
               data: data,
             );
         if (mounted) {

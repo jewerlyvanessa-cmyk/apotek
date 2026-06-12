@@ -53,6 +53,10 @@
 	<string>Scan barcode untuk memilih obat.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Login cepat dengan Face ID atau Touch ID.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Menghubungkan printer struk thermal Bluetooth.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Menghubungkan printer struk thermal Bluetooth.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
