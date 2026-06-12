@@ -320,6 +320,13 @@ class CashierLedgerPage extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
             if (needsBranchPicker)
               branchesAsync.when(
                 loading: () => const LinearProgressIndicator(),
@@ -364,44 +371,12 @@ class CashierLedgerPage extends ConsumerWidget {
             summaryAsync.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('$e', style: const TextStyle(color: AppColors.danger)),
-              data: (s) => Column(
-                children: [
-                  _summaryTile(
-                    'Total penjualan',
-                    s.salesTotal,
-                    subtitle: '${s.salesOrders} transaksi lunas',
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _summaryTile(
-                          'Uang masuk',
-                          s.cashIn,
-                          color: AppColors.success,
-                          compact: true,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _summaryTile(
-                          'Uang keluar',
-                          s.cashOut,
-                          color: AppColors.danger,
-                          compact: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _summaryTile(
-                    'Saldo kas hari ini',
-                    s.netTotal,
-                    subtitle: 'Penjualan + masuk − keluar',
-                    color: AppColors.primary,
-                  ),
-                ],
+              data: (s) => _SummaryGrid(
+                salesTotal: s.salesTotal,
+                salesOrders: s.salesOrders,
+                cashIn: s.cashIn,
+                cashOut: s.cashOut,
+                netTotal: s.netTotal,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -457,51 +432,10 @@ class CashierLedgerPage extends ConsumerWidget {
               },
             ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _summaryTile(
-    String label,
-    double value, {
-    String? subtitle,
-    Color? color,
-    bool compact = false,
-  }) {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: compact ? 12 : 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              formatRupiah(value),
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: compact ? 16 : 20,
-                color: color,
-              ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -534,6 +468,171 @@ class CashierLedgerPage extends ConsumerWidget {
           onPressed: () => _deleteEntry(context, ref, e),
         ),
       ),
+    );
+  }
+}
+
+Widget _ledgerSummaryTile(
+  String label,
+  double value, {
+  String? subtitle,
+  Color? color,
+}) {
+  return Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            formatRupiah(value),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: color,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+class _SummaryGrid extends StatelessWidget {
+  const _SummaryGrid({
+    required this.salesTotal,
+    required this.salesOrders,
+    required this.cashIn,
+    required this.cashOut,
+    required this.netTotal,
+  });
+
+  final double salesTotal;
+  final int salesOrders;
+  final double cashIn;
+  final double cashOut;
+  final double netTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final gap = AppSpacing.sm;
+
+        Widget tile(
+          String label,
+          double value, {
+          String? subtitle,
+          Color? color,
+        }) {
+          return _ledgerSummaryTile(
+            label,
+            value,
+            subtitle: subtitle,
+            color: color,
+          );
+        }
+
+        final sales = tile(
+          'Total penjualan',
+          salesTotal,
+          subtitle: '$salesOrders transaksi lunas',
+          color: AppColors.primary,
+        );
+        final income = tile('Uang masuk', cashIn, color: AppColors.success);
+        final expense = tile('Uang keluar', cashOut, color: AppColors.danger);
+        final balance = tile(
+          'Saldo kas hari ini',
+          netTotal,
+          subtitle: 'Penjualan + masuk − keluar',
+          color: AppColors.primary,
+        );
+
+        if (w >= 720) {
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: sales),
+                SizedBox(width: gap),
+                Expanded(child: income),
+                SizedBox(width: gap),
+                Expanded(child: expense),
+                SizedBox(width: gap),
+                Expanded(child: balance),
+              ],
+            ),
+          );
+        }
+
+        if (w >= 480) {
+          return Column(
+            children: [
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: sales),
+                    SizedBox(width: gap),
+                    Expanded(child: income),
+                  ],
+                ),
+              ),
+              SizedBox(height: gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: expense),
+                    SizedBox(width: gap),
+                    Expanded(child: balance),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            sales,
+            SizedBox(height: gap),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: income),
+                  SizedBox(width: gap),
+                  Expanded(child: expense),
+                ],
+              ),
+            ),
+            SizedBox(height: gap),
+            balance,
+          ],
+        );
+      },
     );
   }
 }
