@@ -11,17 +11,7 @@ List<QuickMenuItem> homeQuickMenuItems(
   bool showWarehouseEtalaseMenus = false,
   bool showMultiBranchMenus = true,
 }) {
-  final items = switch (user.role) {
-    'OWNER' => _ownerMenus(context),
-    'MANAGER' when user.isTenantWideManager => _tenantManagerMenus(context),
-    'MANAGER' when user.isBranchManager => _branchManagerMenus(context),
-    'MANAGER' => _branchManagerMenus(context),
-    'PHARMACIST' => _pharmacistMenus(context),
-    'WAREHOUSE' => _warehouseMenus(context, user),
-    'STAFF' => _staffMenus(context),
-    'CASHIER' => _cashierMenus(context),
-    _ => const <_DashboardMenuEntry>[],
-  };
+  final items = _menuEntriesForUser(context, user);
   return items
       .where((item) => isRouteAllowedForActiveRole(item.path, user))
       .where(
@@ -42,6 +32,47 @@ List<QuickMenuItem> homeQuickMenuItems(
         ),
       )
       .toList();
+}
+
+List<_DashboardMenuEntry> _menuEntriesForUser(
+  BuildContext context,
+  AuthUser user,
+) {
+  if (user.isOwner) return _ownerMenus(context);
+  if (user.isTenantWideManager) return _tenantManagerMenus(context);
+  if (user.isBranchManager) return _branchManagerMenus(context);
+
+  final branchRoles = user.rolesAtBranch(user.branchId).toSet();
+  final merged = <_DashboardMenuEntry>[];
+  final seenPaths = <String>{};
+
+  void append(List<_DashboardMenuEntry> entries) {
+    for (final entry in entries) {
+      if (seenPaths.add(entry.path)) merged.add(entry);
+    }
+  }
+
+  if (branchRoles.contains('WAREHOUSE')) {
+    append(_warehouseMenus(context, user));
+  }
+  if (branchRoles.contains('PHARMACIST')) {
+    append(_pharmacistMenus(context));
+  }
+  if (branchRoles.contains('STAFF')) {
+    append(_staffMenus(context));
+  }
+  if (branchRoles.contains('CASHIER')) {
+    append(_cashierMenus(context));
+  }
+  if (merged.isNotEmpty) return merged;
+
+  return switch (user.role) {
+    'PHARMACIST' => _pharmacistMenus(context),
+    'WAREHOUSE' => _warehouseMenus(context, user),
+    'STAFF' => _staffMenus(context),
+    'CASHIER' => _cashierMenus(context),
+    _ => const <_DashboardMenuEntry>[],
+  };
 }
 
 class _DashboardMenuEntry {

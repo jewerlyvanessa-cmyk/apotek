@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ApotikFlow — Paket & Harga</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.35;
+      color: #1a1a2e;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 10mm;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 22pt;
+      font-weight: 800;
+      color: #2563eb;
+      letter-spacing: -0.5px;
+    }
+    .tagline { font-size: 9pt; color: #64748b; margin-top: 2px; }
+    .date { font-size: 8pt; color: #94a3b8; text-align: right; }
+    h2 {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: #2563eb;
+      margin: 8px 0 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+      margin-bottom: 4px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 3px 5px;
+      text-align: left;
+    }
+    th { background: #f1f5f9; font-weight: 600; }
+    .highlight { background: #eff6ff; }
+    .recommended {
+      border: 2px solid #2563eb;
+      border-radius: 6px;
+      padding: 6px;
+      background: #eff6ff;
+    }
+    .price { font-weight: 700; color: #1e40af; white-space: nowrap; }
+    .star { color: #f59e0b; }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 5px;
+      padding: 5px 6px;
+      font-size: 8pt;
+    }
+    .card strong { display: block; font-size: 8.5pt; margin-bottom: 2px; }
+    ul.features {
+      columns: 2;
+      column-gap: 12px;
+      font-size: 8pt;
+      list-style: none;
+      padding: 0;
+    }
+    ul.features li::before { content: "✓ "; color: #16a34a; font-weight: bold; }
+    ul.features li { margin-bottom: 1px; }
+    footer {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 7.5pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+    .badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 4px;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <p class="no-print" style="background:#fef3c7;padding:6px 10px;border-radius:4px;margin-bottom:8px;font-size:9pt;">
+    <strong>Cetak PDF:</strong> Ctrl/Cmd+P → Destination: Save as PDF → Paper: A4 → Margins: Minimum
+  </p>
+
+  <header>
+    <div>
+      <h1>ApotikFlow</h1>
+      <p class="tagline">Sistem apotik modern · multi cabang · realtime · Android · iOS · Web</p>
+    </div>
+    <div class="date">Juni 2026<br/>Dokumen sales</div>
+  </header>
+
+  <div class="grid-2" style="margin-bottom:6px;">
+    <div>
+      <h2>Keunggulan</h2>
+      <table>
+        <tr><td><strong>Pelayan</strong></td><td>Order dari HP, stok realtime</td></tr>
+        <tr><td><strong>Kasir</strong></td><td>Antrian bayar, QRIS, struk thermal</td></tr>
+        <tr><td><strong>Gudang</strong></td><td>Opname, batch, distribusi</td></tr>
+        <tr><td><strong>Owner</strong></td><td>Laporan laba rugi, multi cabang</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Model deployment</h2>
+      <table>
+        <tr><th>Model</th><th>Bayar</th><th>Server</th></tr>
+        <tr><td>SaaS Cloud</td><td>/ tahun</td><td>Kami kelola</td></tr>
+        <tr><td>On-prem langganan</td><td>/ tahun</td><td>Lokasi Anda</td></tr>
+        <tr><td>On-prem beli putus</td><td>Sekali</td><td>Lokasi Anda</td></tr>
+      </table>
+      <p style="font-size:8pt;margin-top:3px;color:#64748b;">Trial SaaS 14 hari · setup remote gratis (Starter & Profesional)</p>
+    </div>
+  </div>
+
+  <h2>Harga SaaS Cloud <span class="badge">TAGIH TAHUNAN</span></h2>
+  <div class="grid-4">
+    <div class="card">
+      <strong>Starter</strong>
+      1 cabang<br/>
+      <span class="price">Rp 4.990.000</span>/th<br/>
+      <span style="color:#64748b">~Rp 416 rb/bln</span>
+    </div>
+    <div class="card recommended">
+      <strong>Profesional <span class="star">★</span></strong>
+      3 cabang<br/>
+      <span class="price">Rp 11.990.000</span>/th<br/>
+      <span style="color:#64748b">~Rp 999 rb/bln · direkomendasikan</span>
+    </div>
+    <div class="card">
+      <strong>Enterprise</strong>
+      10 cabang<br/>
+      <span class="price">Rp 29.990.000</span>/th<br/>
+      <span style="color:#64748b">~Rp 2,5 jt/bln</span>
+    </div>
+    <div class="card">
+      <strong>Kustom</strong>
+      &gt;10 cabang<br/>
+      <span class="price">Negosiasi</span><br/>
+      <span style="color:#64748b">Rp 3,5–4,5 jt/cabang/th</span>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:6px;">
+    <div>
+      <h2>On-Prem Berlangganan / tahun</h2>
+      <table>
+        <tr><th>Paket</th><th>Cabang</th><th>Harga</th></tr>
+        <tr><td>Starter</td><td>1</td><td class="price">Rp 3.990.000</td></tr>
+        <tr><td>Profesional</td><td>3</td><td class="price">Rp 9.490.000</td></tr>
+        <tr><td>Enterprise</td><td>10</td><td class="price">Rp 23.990.000</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>On-Prem Beli Putus</h2>
+      <table>
+        <tr><th>Paket</th><th>Cabang</th><th>Total th-1*</th></tr>
+        <tr><td>Single</td><td>1</td><td class="price">~Rp 22,5 jt</td></tr>
+        <tr><td>Standard</td><td>3</td><td class="price">~Rp 52,5 jt</td></tr>
+        <tr><td>Enterprise</td><td>10</td><td class="price">~Rp 125 jt</td></tr>
+      </table>
+      <p style="font-size:7.5pt;color:#64748b;">*Lisensi selamanya + implementasi. Server tidak termasuk.</p>
+    </div>
+  </div>
+
+  <h2>Semua paket termasuk</h2>
+  <ul class="features">
+    <li>Kasir & pembayaran (tunai, transfer, QRIS)</li>
+    <li>Order pelayan + telaah apoteker</li>
+    <li>Katalog & golongan obat</li>
+    <li>Stok realtime, batch, kadaluarsa</li>
+    <li>Gudang, opname, distribusi*</li>
+    <li>Laporan penjualan & laba rugi</li>
+    <li>Multi peran (6 peran)</li>
+    <li>Mode offline + sinkronisasi</li>
+    <li>Android, iOS, & browser</li>
+  </ul>
+  <p style="font-size:7.5pt;color:#64748b;margin-top:2px;">*Distribusi relevan paket ≥2 cabang. Semua tier: fitur aplikasi sama.</p>
+
+  <div class="grid-2" style="margin-top:6px;">
+    <div>
+      <h2>Layanan tambahan</h2>
+      <table>
+        <tr><td>Cabang ekstra (SaaS)</td><td class="price">Rp 1,2 jt/cabang/th</td></tr>
+        <tr><td>Pelatihan on-site 1 hari</td><td class="price">Rp 4,5 jt + transport</td></tr>
+        <tr><td>Pelatihan remote 2 jam</td><td class="price">Rp 1,5 jt</td></tr>
+        <tr><td>Migrasi data</td><td class="price">Rp 2,5 – 7,5 jt</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2>Rekomendasi cepat</h2>
+      <table>
+        <tr><td>1 outlet, cepat jalan</td><td><strong>SaaS Starter</strong></td></tr>
+        <tr class="highlight"><td>2–3 outlet</td><td><strong>SaaS Profesional ★</strong></td></tr>
+        <tr><td>4–10 outlet</td><td><strong>SaaS Enterprise</strong></td></tr>
+        <tr><td>Data di server sendiri</td><td><strong>On-prem langganan</strong></td></tr>
+        <tr><td>Tanpa langganan tahunan</td><td><strong>On-prem beli putus</strong></td></tr>
+      </table>
+      <p style="font-size:8pt;margin-top:4px;"><strong>Early adopter:</strong> diskon hingga 20% (5 pelanggan pertama + testimoni)</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>ApotikFlow · Demo online 30 menit · Hubungi tim sales</span>
+    <span>Harga usulan internal · Juni 2026</span>
+  </footer>
+</body>
+</html>

@@ -38,8 +38,19 @@ async function assertPrismaSchemaSynced(sourceDir, targetDir) {
     );
   }
 
-  if (!(await exists(sourceMigrations)) || !(await exists(targetMigrations))) {
-    throw new Error('Folder prisma/migrations hilang di source atau target deploy');
+  const hasMigrations =
+    (await exists(sourceMigrations)) && (await exists(targetMigrations));
+  if (!hasMigrations) {
+    const hasSql = await exists(path.resolve(sourceDir, 'sql'));
+    if (!hasSql) {
+      throw new Error(
+        'prisma/migrations atau prisma/sql wajib ada untuk deploy schema',
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.warn(
+      'Catatan: prisma/migrations tidak ada — deploy pakai `npx prisma db push` + skrip sql di prisma/sql/',
+    );
   }
 }
 
@@ -88,11 +99,18 @@ cp .env.example .env
 # 3) install deps (production only)
 npm ci --omit=dev
 
-# 4) jalankan
-node dist/main
+# 4) sinkron schema DB
+# Jika ada prisma/migrations:
+npx prisma migrate deploy
+# Jika tidak ada migrations (proyek ini):
+# DATABASE_URL="<user owner>" npx prisma db push
+# npm run db:tenant-permissions   # dari mesin dev, atau jalankan prisma/sql/tenant-db-permissions.sql
+
+# 5) jalankan
+node dist/main.js
 \`\`\`
 
-> Catatan: untuk production sebaiknya pakai Prisma Migrate (\`prisma migrate deploy\`).
+> Catatan: jika folder \`prisma/migrations\` tidak ada, gunakan \`npx prisma db push\` lalu skrip di \`prisma/sql/\`.
 `;
 
   const schemaHash = await sha256File(path.resolve(targetPrisma, 'schema.prisma'));

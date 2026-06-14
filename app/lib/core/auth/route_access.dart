@@ -1,9 +1,11 @@
 import '../../features/auth/domain/entities/auth_user.dart';
 
-/// Apakah [path] boleh diakses dengan peran aktif saat ini.
+/// Apakah [path] boleh diakses user saat ini.
+/// Staff/Kasir: semua peran ditugaskan di cabang aktif (tanpa wajib ganti peran).
 bool isRouteAllowedForActiveRole(String path, AuthUser user) {
   final role = user.role;
   bool activeIs(String r) => role == r;
+  bool assignedIs(String r) => user.hasRoleInBranch(r);
 
   const sharedPaths = {
     '/home',
@@ -39,14 +41,14 @@ bool isRouteAllowedForActiveRole(String path, AuthUser user) {
   if (path.startsWith('/platform')) return activeIs('SUPER_ADMIN');
 
   if (path.startsWith('/cashier') || path == '/reports/cashier') {
-    return activeIs('CASHIER');
+    return assignedIs('CASHIER');
   }
   if (path == '/ledger') {
     return activeIs('OWNER') || activeIs('MANAGER');
   }
-  if (path == '/orders') return activeIs('STAFF');
+  if (path == '/orders') return assignedIs('STAFF');
   if (path == '/reports/staff') {
-    return activeIs('STAFF') || activeIs('PHARMACIST');
+    return assignedIs('STAFF') || assignedIs('PHARMACIST');
   }
   if (path == '/reports/branch') {
     return activeIs('MANAGER') && user.isBranchManager;
@@ -106,7 +108,7 @@ bool isRouteAllowedForActiveRole(String path, AuthUser user) {
   if (path == '/settings/printer') {
     return activeIs('OWNER') ||
         activeIs('MANAGER') ||
-        activeIs('CASHIER');
+        assignedIs('CASHIER');
   }
 
   return true;

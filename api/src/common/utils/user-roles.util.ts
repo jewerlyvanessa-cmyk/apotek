@@ -67,11 +67,12 @@ export function userHasAssignedRole(
   return user.role === role;
 }
 
+/** Otorisasi endpoint — salah satu peran ditugaskan di sesi (bukan hanya peran aktif). */
 export function userHasAnyRole(
   user: Pick<JwtPayloadUser, 'role' | 'roles'>,
   roles: readonly (AppRoleName | UserRole)[],
 ): boolean {
-  return roles.some((r) => userHasRole(user, r));
+  return roles.some((r) => userHasAssignedRole(user, r));
 }
 
 export function isOwnerOrManager(user: Pick<JwtPayloadUser, 'role' | 'roles' | 'branchId'>): boolean {

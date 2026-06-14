@@ -65,8 +65,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
   final user = auth.user;
   final role = user?.role;
-  /// Hanya peran aktif sesi — agar ganti role memperbarui rute & dashboard.
-  bool has(String r) => role == r;
+  /// Peran aktif sesi — untuk rute yang bergantung peran utama (Owner, Manajer, dll.).
+  bool hasActive(String r) => role == r;
+  /// Peran ditugaskan di cabang — Staff/Kasir bisa dipakai bersamaan tanpa ganti peran.
+  bool hasAssigned(String r) => user?.hasRoleInBranch(r) ?? false;
+  bool has(String r) {
+    if (r == 'STAFF' || r == 'CASHIER') return hasAssigned(r);
+    return hasActive(r);
+  }
   final isTenantWide = user?.isTenantWideManager ?? false;
 
   return GoRouter(

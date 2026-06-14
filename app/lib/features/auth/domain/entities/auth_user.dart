@@ -207,6 +207,9 @@ class AuthUser extends Equatable {
         fallback: role,
       );
 
+  /// Peran ditugaskan di cabang aktif (bukan hanya peran sesi).
+  bool hasRoleInBranch(String r) => rolesAtBranch(branchId).contains(r);
+
   List<String> branchesForRole(String r) {
     final fromAssignments = branchAssignments
         .where((a) => a.roles.contains(r))
@@ -240,8 +243,8 @@ class AuthUser extends Equatable {
 
   bool get isSuperAdmin => role == 'SUPER_ADMIN';
   bool get isOwner => role == 'OWNER';
-  bool get isCashier => role == 'CASHIER';
-  bool get isStaff => role == 'STAFF';
+  bool get isCashier => hasRoleInBranch('CASHIER');
+  bool get isStaff => hasRoleInBranch('STAFF');
   bool get isWarehouse => role == 'WAREHOUSE';
   bool get isManager => role == 'MANAGER';
   bool get isPharmacist => role == 'PHARMACIST';
